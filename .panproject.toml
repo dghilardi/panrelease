@@ -1,0 +1,5 @@
+[vcs]
+software = "Git"
+
+[modules."."]
+packageManager = "Cargo"
