@@ -1,5 +1,6 @@
 [vcs]
 software = "Git"
 
-[modules."."]
+[modules.root]
+path = "."
 packageManager = "Cargo"
