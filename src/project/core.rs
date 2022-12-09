@@ -1,9 +1,10 @@
 use std::path::Path;
 use anyhow::anyhow;
-use git2::{Repository, RepositoryOpenFlags};
+use git2::{Repository, RepositoryOpenFlags, StatusOptions};
 use crate::project::config::PanProjectConfig;
 
 pub struct PanProject {
+    conf: PanProjectConfig,
     repo: Repository,
 }
 
@@ -19,7 +20,15 @@ impl PanProject {
         let conf = PanProjectConfig::load(project_root)?;
 
         Ok(Self {
-            repo
+            conf,
+            repo,
         })
+    }
+
+    pub fn release(&self) -> anyhow::Result<()> {
+        if !self.repo.statuses(None)?.is_empty() {
+            return Err(anyhow!("Repository status is not clean"));
+        }
+        Ok(())
     }
 }
