@@ -139,7 +139,7 @@ impl BumpLevel {
                     build: Default::default(),
                 }
             }
-            BumpLevel::Prerel => {
+            BumpLevel::Pre => {
                 let pre = current.pre.rfind('.').and_then(|sep_idx| {
                     current.pre.as_str()[sep_idx+1..]
                         .parse::<u64>()

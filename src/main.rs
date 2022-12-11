@@ -1,5 +1,6 @@
 mod project;
 mod args;
+mod package;
 
 use clap::Parser;
 use crate::args::{Commands, PanReleaseArgs};

@@ -31,14 +31,17 @@ impl PanProject {
         if !self.repo.statuses(None)?.is_empty() {
             return Err(anyhow!("Repository status is not clean"));
         }
-        let new_version = rel_args.level_or_version.apply(self.extract_version());
+        let new_version = rel_args.level_or_version.apply(self.extract_version()?);
         print!("{new_version}");
         Ok(())
     }
 
-    fn extract_version(&self) -> semver::Version {
-        let mut ver = semver::Version::new(1, 2, 3);
-        ver.pre = Prerelease::new("demo.3").unwrap();
-        ver
+    fn extract_version(&self) -> anyhow::Result<semver::Version> {
+        let maybe_module = self.conf.extract_master_mod()?;
+        if let Some(module) = maybe_module {
+            module.extract_version()
+        } else {
+            todo!("Module detection not yet implemented")
+        }
     }
 }
