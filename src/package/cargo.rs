@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use std::str::FromStr;
 use semver::Version;
 use crate::package::PanPackage;
+use crate::runner::CmdRunner;
 
 pub struct CargoPackage {
     path: PathBuf,
@@ -34,6 +35,12 @@ impl PanPackage for CargoPackage {
 
     fn persist(&self) -> anyhow::Result<()> {
         fs::write(self.path.join("Cargo.toml"), self.doc.to_string())?;
+        Ok(())
+    }
+
+    fn hook_after_rel(&self) -> anyhow::Result<()> {
+        let mut runner = CmdRunner::build("cargo", &[String::from("generate-lockfile")])?;
+        runner.run()?;
         Ok(())
     }
 }

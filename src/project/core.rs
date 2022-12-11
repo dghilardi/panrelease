@@ -41,6 +41,7 @@ impl PanProject {
         for mut module in self.conf.modules()? {
             module.set_version(&new_version)?;
             module.persist()?;
+            module.hook_after_rel()?;
         }
         Ok(())
     }

@@ -1,12 +1,15 @@
 mod project;
 mod args;
 mod package;
+mod runner;
 
 use clap::Parser;
 use crate::args::{Commands, PanReleaseArgs};
 use crate::project::core::PanProject;
 
 fn main() {
+    env_logger::init();
+
     let args: PanReleaseArgs = PanReleaseArgs::parse();
 
     let cwd = std::env::current_dir()

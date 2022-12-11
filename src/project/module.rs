@@ -36,5 +36,9 @@ impl PanModule {
     pub fn persist(&self) -> anyhow::Result<()> {
         self.package.persist()
     }
+
+    pub fn hook_after_rel(&mut self) -> anyhow::Result<()> {
+        self.package.hook_after_rel()
+    }
 }
 
