@@ -1,6 +1,6 @@
 use std::path::Path;
 use anyhow::anyhow;
-use git2::{Repository, RepositoryOpenFlags, StatusOptions, StatusShow};
+use git2::{IndexAddOption, IndexEntry, Repository, RepositoryOpenFlags, StatusOptions, StatusShow};
 use semver::Prerelease;
 use crate::args::RelArgs;
 use crate::project::config::PanProjectConfig;
@@ -43,6 +43,31 @@ impl PanProject {
             module.persist()?;
             module.hook_after_rel()?;
         }
+
+        self.update_and_commit(new_version)?;
+
+        Ok(())
+    }
+
+    fn update_and_commit(&self, version: semver::Version) -> anyhow::Result<()> {
+        let mut index = self.repo.index()?;
+        index.update_all(["*"].iter(), Some(&mut (|a, b| {
+            log::debug!("Adding {:?}", a);
+            0
+        })))?;
+        index.write()?;
+
+        let signature = self.repo.signature()?;
+        let oid = index.write_tree()?;
+        let tree = self.repo.find_tree(oid)?;
+        let parent_commit = self.repo.head()?.peel_to_commit()?;
+
+        let descr = version.to_string();
+        let commit_oid = self.repo.commit(Some("HEAD"), &signature, &signature, &descr, &tree, &[&parent_commit])?;
+
+        let commit_obj = self.repo.find_object(commit_oid, None)?;
+        self.repo.tag_lightweight(&descr, &commit_obj, false)?;
+
         Ok(())
     }
 
