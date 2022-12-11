@@ -1,6 +1,6 @@
 use std::path::Path;
 use anyhow::anyhow;
-use git2::{Repository, RepositoryOpenFlags, StatusOptions};
+use git2::{Repository, RepositoryOpenFlags, StatusOptions, StatusShow};
 use semver::Prerelease;
 use crate::args::RelArgs;
 use crate::project::config::PanProjectConfig;
@@ -28,7 +28,13 @@ impl PanProject {
     }
 
     pub fn release(&self, rel_args: RelArgs) -> anyhow::Result<()> {
-        if !self.repo.statuses(None)?.is_empty() {
+        let mut opts = StatusOptions::new();
+        opts
+            .include_unmodified(false)
+            .include_untracked(false)
+            .include_ignored(false);
+
+        if !self.repo.statuses(Some(&mut opts))?.is_empty() {
             return Err(anyhow!("Repository status is not clean"));
         }
         let new_version = rel_args.level_or_version.apply(self.extract_version()?);
