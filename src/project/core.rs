@@ -32,7 +32,10 @@ impl PanProject {
             return Err(anyhow!("Repository status is not clean"));
         }
         let new_version = rel_args.level_or_version.apply(self.extract_version()?);
-        print!("{new_version}");
+        for mut module in self.conf.modules()? {
+            module.set_version(&new_version)?;
+            module.persist()?;
+        }
         Ok(())
     }
 

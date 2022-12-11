@@ -26,4 +26,14 @@ impl PanPackage for CargoPackage {
         };
         Ok(Version::from_str(ver)?)
     }
+
+    fn set_version(&mut self, version: &Version) -> anyhow::Result<()> {
+        self.doc["package"]["version"] = toml_edit::value(version.to_string());
+        Ok(())
+    }
+
+    fn persist(&self) -> anyhow::Result<()> {
+        fs::write(self.path.join("Cargo.toml"), self.doc.to_string())?;
+        Ok(())
+    }
 }

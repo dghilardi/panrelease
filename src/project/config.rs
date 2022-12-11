@@ -7,8 +7,8 @@ use crate::project::module::PanModule;
 
 #[derive(Deserialize, Debug)]
 pub struct PanProjectConfig {
-    pub vcs: VcsConfig,
-    pub modules: HashMap<String, ProjectModule>,
+    vcs: VcsConfig,
+    modules: HashMap<String, ProjectModule>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -98,6 +98,12 @@ impl PanProjectConfig {
                 Ok(Some(PanModule::new(String::from(*name), (*conf).clone())?))
             }
         }
+    }
+
+    pub fn modules(&self) -> anyhow::Result<Vec<PanModule>> {
+        self.modules.iter()
+            .map(|(name, conf)| PanModule::new(String::from(name), conf.clone()))
+            .collect()
     }
 }
 

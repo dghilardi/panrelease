@@ -28,5 +28,13 @@ impl PanModule {
     pub fn extract_version(&self) -> anyhow::Result<semver::Version> {
         self.package.extract_version()
     }
+
+    pub fn set_version(&mut self, version: &semver::Version) -> anyhow::Result<()> {
+        self.package.set_version(version)
+    }
+
+    pub fn persist(&self) -> anyhow::Result<()> {
+        self.package.persist()
+    }
 }
 
