@@ -5,15 +5,16 @@ use anyhow::{anyhow, Context};
 use serde::Deserialize;
 use crate::project::module::PanModule;
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Default)]
 pub struct PanProjectConfig {
     vcs: VcsConfig,
     modules: HashMap<String, ProjectModule>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Default)]
 #[serde(tag = "software")]
 pub enum VcsConfig {
+    #[default]
     Git,
 }
 
@@ -40,7 +41,11 @@ pub enum PackageManager {
 
 impl PanProjectConfig {
     pub fn load(path: &Path) -> anyhow::Result<PanProjectConfig> {
-        let conf_str = fs::read_to_string(path.join(".panproject.toml"))
+        let conf_file_path = path.join(".panproject.toml");
+        if !conf_file_path.exists() {
+            return Ok(Default::default())
+        }
+        let conf_str = fs::read_to_string(conf_file_path)
             .with_context(|| format!("Failed to read .panproject.toml from {:?}", path))?;
         let mut conf: PanProjectConfig = toml::from_str(&conf_str)?;
 
