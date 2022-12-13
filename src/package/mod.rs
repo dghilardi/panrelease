@@ -1,3 +1,6 @@
+use std::path::{Path, PathBuf};
+use crate::package::cargo::CargoPackage;
+
 pub mod cargo;
 
 pub trait PanPackage {
