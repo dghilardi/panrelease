@@ -39,6 +39,20 @@ pub enum PackageManager {
     Maven,
 }
 
+impl PackageManager {
+    pub fn detect(path: &Path) -> Option<Self> {
+        if path.join("Cargo.toml").is_file() {
+            Some(Self::Cargo)
+        } else if path.join("pom.xml").is_file() {
+            Some(Self::Maven)
+        } else if path.join("package.json").is_file() {
+            Some(Self::Npm)
+        } else {
+            None
+        }
+    }
+}
+
 impl PanProjectConfig {
     pub fn load(path: &Path) -> anyhow::Result<PanProjectConfig> {
         let conf_file_path = path.join(".panproject.toml");

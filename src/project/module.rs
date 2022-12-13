@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use crate::package::cargo::CargoPackage;
 use crate::package::PanPackage;
 use crate::project::config::{PackageManager, ProjectModule};
@@ -12,6 +13,20 @@ impl PanModule {
     pub fn new(name: String, conf: ProjectModule) -> anyhow::Result<Self> {
         Ok(Self {
             name,
+            package: Self::extract_package(&conf)?,
+            conf,
+        })
+    }
+
+    pub fn detect(path: PathBuf) -> anyhow::Result<Self> {
+        let conf = ProjectModule {
+            path,
+            main: false,
+            package_manager: PackageManager::detect(&path)?,
+        };
+
+        Ok(Self {
+            name: String::from("<detected>"),
             package: Self::extract_package(&conf)?,
             conf,
         })
