@@ -1,5 +1,7 @@
+use std::fs;
 use std::path::{Path, PathBuf};
 use anyhow::anyhow;
+use chrono::Utc;
 use git2::{IndexAddOption, IndexEntry, Repository, RepositoryOpenFlags, StatusOptions, StatusShow};
 use semver::Prerelease;
 use crate::args::RelArgs;
@@ -47,8 +49,19 @@ impl PanProject {
             module.hook_after_rel()?;
         }
 
+        self.update_changelog(&new_version)?;
         self.update_and_commit(new_version)?;
 
+        Ok(())
+    }
+
+    fn update_changelog(&self, version: &semver::Version) -> anyhow::Result<()> {
+        let changelog_path = self.path.join("CHANGELOG.md");
+        if changelog_path.is_file() {
+            let changelog_content = fs::read_to_string(&changelog_path)?;
+            let updated_changelog = changelog_content.replace("\n## [Unreleased]", &format!("\n## [Unreleased]\n\n## [{version}] {}", Utc::now().format("%Y-%m-%d")));
+            fs::write(&changelog_path, updated_changelog)?;
+        }
         Ok(())
     }
 
