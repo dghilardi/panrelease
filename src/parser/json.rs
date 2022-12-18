@@ -47,13 +47,13 @@ impl FormatCodec for JsonString {
         Ok(Some(*value))
     }
 
-    fn replace(&mut self, path: &str, value: &str) -> anyhow::Result<bool> {
+    fn replace(&mut self, path: &str, value: &str) -> anyhow::Result<()> {
         let Some(current) = self.extract(path)? else {
-            return Ok(false);
+            anyhow::bail!("Could not find {path} in given json")
         };
         let (start, end) = get_range(&self.inner, current);
         self.inner.replace_range(start..end, value);
-        return Ok(true);
+        Ok(())
     }
 }
 

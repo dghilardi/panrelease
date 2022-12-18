@@ -2,6 +2,7 @@ use std::path::{Path, PathBuf};
 use crate::package::cargo::CargoPackage;
 
 pub mod cargo;
+pub mod npm;
 
 pub trait PanPackage {
     fn extract_version(&self) -> anyhow::Result<semver::Version>;
