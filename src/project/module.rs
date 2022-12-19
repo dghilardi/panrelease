@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 use crate::package::cargo::CargoPackage;
+use crate::package::maven::MavenPackage;
 use crate::package::npm::NpmPackage;
 use crate::package::PanPackage;
 use crate::project::config::{PackageManager, ProjectModule};
@@ -40,7 +41,7 @@ impl PanModule {
         Ok(match conf.package_manager {
             PackageManager::Cargo => Box::new(CargoPackage::new(conf.path.clone())?),
             PackageManager::Npm => Box::new(NpmPackage::new(conf.path.clone())?),
-            PackageManager::Maven => todo!("package not implemented"),
+            PackageManager::Maven => Box::new(MavenPackage::new(conf.path.clone())?),
         })
     }
 
