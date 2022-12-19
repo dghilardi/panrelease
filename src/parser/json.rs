@@ -12,6 +12,7 @@ use nom::{
     Err, IResult,
 };
 use crate::parser::FormatCodec;
+use crate::utils::get_range;
 
 pub struct JsonString {
     inner: String,
@@ -179,12 +180,6 @@ fn root<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
         )),
         opt(space),
     )(i)
-}
-
-fn get_range(whole_buffer: &str, part: &str) -> (usize, usize) {
-    let start = part.as_ptr() as usize - whole_buffer.as_ptr() as usize;
-    let end = start + part.len();
-    (start, end)
 }
 
 #[cfg(test)]

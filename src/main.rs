@@ -3,6 +3,7 @@ mod args;
 mod package;
 mod runner;
 mod parser;
+mod utils;
 
 use clap::Parser;
 use update_informer::registry::Crates;
