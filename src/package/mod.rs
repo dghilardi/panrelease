@@ -3,6 +3,7 @@ use crate::package::cargo::CargoPackage;
 
 pub mod cargo;
 pub mod npm;
+pub mod maven;
 
 pub trait PanPackage {
     fn extract_version(&self) -> anyhow::Result<semver::Version>;

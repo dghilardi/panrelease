@@ -607,6 +607,7 @@ dependencies = [
  "git2",
  "log",
  "nom",
+ "regex",
  "semver",
  "serde",
  "toml",
