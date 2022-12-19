@@ -43,6 +43,8 @@ impl PanPackage for NpmPackage {
             CmdRunner::build("npm", &[String::from("i"), String::from("--package-lock-only")])?
         } else if self.path.join("yarn.lock").is_file() {
             CmdRunner::build("yarn", &[String::from("--mode"), String::from("update-lockfile")])?
+        } else {
+            anyhow::bail!("Cannot find any lockfile for package.json")
         };
         runner.run()?;
         Ok(())
