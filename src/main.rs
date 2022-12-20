@@ -5,6 +5,7 @@ mod runner;
 mod parser;
 mod utils;
 
+use std::process;
 use clap::Parser;
 use update_informer::registry::Crates;
 use update_informer::{Check, UpdateInformer};
@@ -17,15 +18,23 @@ fn main() {
 
     let args: PanReleaseArgs = PanReleaseArgs::parse();
 
-    let cwd = std::env::current_dir()
-        .expect("Error loading current directory");
+    let Ok(cwd) = std::env::current_dir() else {
+        eprintln!("Error loading current directory");
+        process::exit(exitcode::IOERR);
+    };
 
-    let project = PanProject::load(cwd.as_path())
-        .expect("Error loading project");
+    let Ok(project) = PanProject::load(cwd.as_path()) else {
+        eprintln!("Error loading project");
+        process::exit(exitcode::IOERR);
+    };
 
     match args.subcommand {
-        Commands::Release(rel_args) => project.release(rel_args)
-            .expect("Error releasing project")
+        Commands::Release(rel_args) => {
+            if let Err(err) = project.release(rel_args) {
+                eprintln!("Error releasing project - {err}");
+                process::exit(exitcode::SOFTWARE);
+            }
+        }
     }
 }
 
