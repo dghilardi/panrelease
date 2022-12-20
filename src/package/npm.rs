@@ -40,9 +40,9 @@ impl PanPackage for NpmPackage {
 
     fn hook_after_rel(&self) -> anyhow::Result<()> {
         let mut runner = if self.path.join("package-lock.json").is_file() {
-            CmdRunner::build("npm", &[String::from("i"), String::from("--package-lock-only")])?
+            CmdRunner::build("npm", &[String::from("i"), String::from("--package-lock-only")], &self.path)?
         } else if self.path.join("yarn.lock").is_file() {
-            CmdRunner::build("yarn", &[String::from("--mode"), String::from("update-lockfile")])?
+            CmdRunner::build("yarn", &[String::from("--mode"), String::from("update-lockfile")], &self.path)?
         } else {
             anyhow::bail!("Cannot find any lockfile for package.json")
         };

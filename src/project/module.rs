@@ -67,7 +67,7 @@ impl PanModule {
                 bail!("error reading '{name}' after_rel hook");
             };
             println!("running after_rel hook {name}");
-            let mut runner = CmdRunner::build(command, args)?;
+            let mut runner = CmdRunner::build(command, args, &self.conf.path)?;
             runner.run()?;
         }
         Ok(())

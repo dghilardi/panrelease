@@ -39,7 +39,7 @@ impl PanPackage for CargoPackage {
     }
 
     fn hook_after_rel(&self) -> anyhow::Result<()> {
-        let mut runner = CmdRunner::build("cargo", &[String::from("generate-lockfile")])?;
+        let mut runner = CmdRunner::build("cargo", &[String::from("generate-lockfile")], &self.path)?;
         runner.run()?;
         Ok(())
     }
