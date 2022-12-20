@@ -4,34 +4,36 @@
 //! XML 1.1, see <https://www.w3.org/TR/xml11/>
 //!
 //! This is a very simple, minimalist parser of XML. It excludes:
-//!	DTDs (and therefore entities)
+//! DTDs (and therefore entities)
 
 extern crate nom;
 
-use super::parsecommon::*;
-use super::qname::*;
-use super::value::Value;
-use super::xdmerror::*;
+use std::collections::HashSet;
+use std::convert::TryFrom;
+use std::str::FromStr;
+
 use nom::{
     branch::alt,
     bytes::complete::{tag, take_until, take_while_m_n},
     character::complete::{char, digit1, hex_digit1, multispace0, multispace1, none_of},
     combinator::{map, map_opt, opt, recognize, value, verify},
+    IResult,
     multi::{many0, many1},
     sequence::delimited,
     sequence::tuple,
-    IResult,
 };
-use std::collections::HashMap;
-use std::collections::HashSet;
-use std::convert::TryFrom;
-use std::str::FromStr;
-use nom::bytes::complete::{escaped, take_till, take_while, take_while1};
-use nom::character::complete::{alphanumeric1, anychar, one_of, satisfy};
+use nom::bytes::complete::{escaped, take_while1};
+use nom::character::complete::{one_of, satisfy};
 use nom::combinator::cut;
 use nom::error::{context, ParseError};
 use nom::sequence::{preceded, terminated};
+
 use crate::parser::xml::value::StringRepr;
+
+use super::parsecommon::*;
+use super::qname::*;
+use super::value::Value;
+use super::xdmerror::*;
 
 // nom doesn't pass additional parameters, only the input,
 // so this is a two-pass process.
@@ -54,15 +56,15 @@ impl <'a> TryFrom<&'a str> for XMLDocument<'a> {
     fn try_from(e: &'a str) -> Result<Self, Self::Error> {
         match document(e.trim()) {
             Ok((rest, value)) => {
-                if rest == "" {
+                if rest.is_empty() {
                     Result::Ok(value)
                 } else {
                     Result::Err(Error {
                         kind: ErrorKind::Unknown,
-                        message: String::from(format!(
+                        message: format!(
                             "extra characters after expression: \"{}\"",
                             rest
-                        )),
+                        ),
                     })
                 }
             }
@@ -89,11 +91,11 @@ pub enum XMLNode<'a> {
     Text(Value<'a>),
     PI(String, Value<'a>),
     Comment(Value<'a>),           // Comment value is a string
-    DTD(DTDDecl),             // These only occur in the prologue
+    Dtd(DtdDecl),             // These only occur in the prologue
     Reference(QualifiedName), // General entity reference. These need to be resolved before presentation to the application
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Eq)]
 pub struct XMLdecl {
     version: String,
     encoding: Option<String>,
@@ -103,8 +105,8 @@ pub struct XMLdecl {
 /// DTD declarations.
 /// Only general entities are supported, so far.
 /// TODO: element, attribute declarations
-#[derive(Clone, Debug, PartialEq)]
-pub enum DTDDecl {
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum DtdDecl {
     GeneralEntity(QualifiedName, String),
 }
 
@@ -115,7 +117,7 @@ fn document(input: &str) -> IResult<&str, XMLDocument> {
 
         XMLDocument {
             content: vec![e],
-            epilogue: m.unwrap_or(vec![]),
+            epilogue: m.unwrap_or_default(),
             xmldecl: pr.0,
             prologue: pr.1,
         }
@@ -226,7 +228,7 @@ fn entitydecl(input: &str) -> IResult<&str, XMLNode> {
             multispace0,
             tag(">"),
         )),
-        |(_, _, n, _, v, _, _)| XMLNode::DTD(DTDDecl::GeneralEntity(n, v)),
+        |(_, _, n, _, v, _, _)| XMLNode::Dtd(DtdDecl::GeneralEntity(n, v)),
     )(input)
 }
 
@@ -239,12 +241,12 @@ fn entityvalue_single(input: &str) -> IResult<&str, String> {
         delimited(
             char('\''),
             recognize(many0(alt((
-                map(recognize(reference), |r| String::from(r)),
+                map(recognize(reference), String::from),
                 map(many1(none_of("'&")), |v| v.iter().collect::<String>()),
             )))),
             char('\''),
         ),
-        |e| String::from(e),
+        String::from,
     )(input)
 }
 fn entityvalue_double(input: &str) -> IResult<&str, String> {
@@ -252,12 +254,12 @@ fn entityvalue_double(input: &str) -> IResult<&str, String> {
         delimited(
             char('"'),
             recognize(many0(alt((
-                map(recognize(reference), |r| String::from(r)),
+                map(recognize(reference), String::from),
                 map(many1(none_of("\"&")), |v| v.iter().collect::<String>()),
             )))),
             char('"'),
         ),
-        |e| String::from(e),
+        String::from,
     )(input)
 }
 
@@ -319,7 +321,7 @@ fn emptyelem(input: &str) -> IResult<&str, XMLNode> {
 fn attributes(input: &str) -> IResult<&str, Vec<XMLNode>> {
     //this is just a wrapper around the attribute function, that checks for duplicates.
     verify(many0(attribute), |v: &[XMLNode]| {
-        let attrs = v.clone();
+        let attrs = &v.iter().collect::<Vec<_>>();
         let uniqueattrs: HashSet<_> = attrs
             .iter()
             .map(|xmlnode| match xmlnode {
@@ -327,11 +329,8 @@ fn attributes(input: &str) -> IResult<&str, Vec<XMLNode>> {
                 _ => "".to_string(),
             })
             .collect();
-        if &v.len() == &uniqueattrs.len() {
-            true
-        } else {
-            false
-        }
+
+        v.len() == uniqueattrs.len()
     })(input)
 }
 
@@ -393,7 +392,7 @@ fn content(input: &str) -> IResult<&str, Vec<XMLNode>> {
                     .map(XMLNode::Text)
                     .for_each(|n| new.push(n));
             }
-            if v.len() != 0 {
+            if !v.is_empty() {
                 for (w, m_d) in v {
                     new.push(w);
                     if let Some(d) = m_d {
@@ -494,7 +493,7 @@ fn chardata(input: &str) -> IResult<&str, Vec<StringRepr>> {
 fn chardata_cdata(input: &str) -> IResult<&str, StringRepr> {
     map(
         delimited(tag("<![CDATA["), take_until("]]>"), tag("]]>")),
-        |cd: &str| StringRepr::Str(cd),
+        StringRepr::Str,
     )(input)
 }
 
@@ -506,7 +505,7 @@ fn chardata_escapes(input: &str) -> IResult<&str, StringRepr> {
         value("&".to_string(), tag("&amp;")),
         value("\"".to_string(), tag("&quot;")),
         value("\'".to_string(), tag("&apos;")),
-    )), |t| StringRepr::String(t))(input)
+    )), StringRepr::String)(input)
 }
 
 fn chardata_unicode_codepoint(input: &str) -> IResult<&str, String> {
@@ -565,13 +564,4 @@ fn prefixed_name(input: &str) -> IResult<&str, QualifiedName> {
             QualifiedName::new(None, Some(String::from(prefix)), String::from(localpart))
         },
     )(input)
-}
-
-fn trim_whitespace(s: &str) -> String {
-    let s = s.replace("", "<!--  -->");
-    let s = s.replace("", "<!--  -->");
-    let re = regex::Regex::new(r"^[\s]+(.*?)[\s]*$").unwrap();
-    let result = re.replace_all(&s, "$1");
-
-    result.to_owned().to_string()
 }

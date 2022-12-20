@@ -27,7 +27,7 @@ impl MavenPackage {
 impl PanPackage for MavenPackage {
     fn extract_version(&self) -> anyhow::Result<Version> {
         let version_str = self.doc.extract("project/version")?
-            .ok_or(anyhow!("Could not find version in pom.xml"))?;
+            .ok_or_else(|| anyhow!("Could not find version in pom.xml"))?;
 
         let placeholder_regex = Regex::new(r#"^\$\{([A-Za-z0-9_.-]+)\}$"#)?;
         let maybe_placeholder = placeholder_regex.captures(version_str)
@@ -35,7 +35,7 @@ impl PanPackage for MavenPackage {
 
         if let Some(placeholder) = maybe_placeholder {
             let version_prop_str = self.doc.extract(&format!("project/properties/{placeholder}"))?
-                .ok_or(anyhow!("Could not find version property in pom.xml"))?;
+                .ok_or_else(|| anyhow!("Could not find version property in pom.xml"))?;
 
             Ok(Version::parse(version_prop_str)?)
         } else {
@@ -45,7 +45,7 @@ impl PanPackage for MavenPackage {
 
     fn set_version(&mut self, version: &Version) -> anyhow::Result<()> {
         let version_str = self.doc.extract("project/version")?
-            .ok_or(anyhow!("Could not find version in pom.xml"))?;
+            .ok_or_else(|| anyhow!("Could not find version in pom.xml"))?;
 
         let placeholder_regex = Regex::new(r#"^\$\{([A-Za-z0-9_.-]+)\}$"#)?;
         let maybe_placeholder = placeholder_regex.captures(version_str)

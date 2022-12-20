@@ -1,16 +1,18 @@
+use std::process;
+
+use clap::Parser;
+use update_informer::Check;
+use update_informer::registry::Crates;
+
+use crate::args::{Commands, PanReleaseArgs};
+use crate::project::core::PanProject;
+
 mod project;
 mod args;
 mod package;
 mod runner;
 mod parser;
 mod utils;
-
-use std::process;
-use clap::Parser;
-use update_informer::registry::Crates;
-use update_informer::{Check, UpdateInformer};
-use crate::args::{Commands, PanReleaseArgs};
-use crate::project::core::PanProject;
 
 fn main() {
     env_logger::init();

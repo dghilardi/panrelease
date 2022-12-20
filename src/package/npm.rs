@@ -1,7 +1,9 @@
 use std::fs;
 use std::path::PathBuf;
+
 use anyhow::anyhow;
 use semver::Version;
+
 use crate::package::PanPackage;
 use crate::parser::FormatCodec;
 use crate::parser::json::JsonString;
@@ -25,7 +27,7 @@ impl NpmPackage {
 impl PanPackage for NpmPackage {
     fn extract_version(&self) -> anyhow::Result<Version> {
         self.doc.extract("version")?
-            .ok_or(anyhow!("Could not find version in package.json"))
+            .ok_or_else(|| anyhow!("Could not find version in package.json"))
             .and_then(|v| Ok(Version::parse(v)?))
     }
 

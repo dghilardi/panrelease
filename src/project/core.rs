@@ -1,9 +1,10 @@
 use std::fs;
 use std::path::{Path, PathBuf};
+
 use anyhow::anyhow;
 use chrono::Utc;
-use git2::{IndexAddOption, IndexEntry, Repository, RepositoryOpenFlags, StatusOptions, StatusShow};
-use semver::Prerelease;
+use git2::{Repository, RepositoryOpenFlags, StatusOptions};
+
 use crate::args::RelArgs;
 use crate::project::config::PanProjectConfig;
 use crate::project::module::PanModule;
@@ -19,10 +20,10 @@ impl PanProject {
         let repo = Repository::open_ext(
             path,
             RepositoryOpenFlags::empty(),
-            &[path]
+            [path]
         )?;
         let project_root = repo.path().parent()
-            .ok_or(anyhow!("Error extracting project path from repo"))?;
+            .ok_or_else(|| anyhow!("Error extracting project path from repo"))?;
         let conf = PanProjectConfig::load(project_root)?;
 
         Ok(Self {
@@ -43,7 +44,7 @@ impl PanProject {
             return Err(anyhow!("Repository status is not clean"));
         }
         let new_version = rel_args.level_or_version.apply(self.extract_master()?.extract_version()?);
-        for mut module in self.conf.modules()? {
+        for mut module in self.extract_modules()? {
             module.set_version(&new_version)?;
             module.persist()?;
             module.hook_after_rel()?;
@@ -67,8 +68,8 @@ impl PanProject {
 
     fn update_and_commit(&self, version: semver::Version) -> anyhow::Result<()> {
         let mut index = self.repo.index()?;
-        index.update_all(["*"].iter(), Some(&mut (|a, b| {
-            log::debug!("Adding {:?}", a);
+        index.update_all(["*"].iter(), Some(&mut (|name, _content| {
+            log::debug!("Adding {:?}", name);
             0
         })))?;
         index.write()?;
@@ -91,7 +92,7 @@ impl PanProject {
         let modules = self.conf.modules()?;
         if modules.is_empty() {
             let detected = PanModule::detect(self.path.clone())?
-                .ok_or(anyhow!("Could not detect package"))?;
+                .ok_or_else(|| anyhow!("Could not detect package"))?;
             Ok(vec![ detected ])
         } else {
             Ok(modules)
@@ -104,7 +105,7 @@ impl PanProject {
             Ok(master)
         } else {
             let detected = PanModule::detect(self.path.clone())?
-                .ok_or(anyhow!("Could not detect package"))?;
+                .ok_or_else(|| anyhow!("Could not detect package"))?;
             Ok(detected)
         }
     }

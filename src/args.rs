@@ -1,4 +1,5 @@
 use std::str::FromStr;
+
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use semver::Prerelease;
 

@@ -2,104 +2,17 @@
 //!
 //! An atomic value as an item in a sequence.
 
-use super::xdmerror::{Error, ErrorKind};
-use chrono::{Date, DateTime, Local};
 use core::fmt;
-use std::cmp::Ordering;
 use std::convert::TryFrom;
 
-/// Comparison operators for values
-#[derive(Copy, Clone)]
-pub enum Operator {
-    Equal,
-    NotEqual,
-    LessThan,
-    LessThanEqual,
-    GreaterThan,
-    GreaterThanEqual,
-    Is,
-    Before,
-    After,
-}
-
-impl Operator {
-    pub fn to_string(&self) -> &str {
-        match self {
-            Operator::Equal => "=",
-            Operator::NotEqual => "!=",
-            Operator::LessThan => "<",
-            Operator::LessThanEqual => "<=",
-            Operator::GreaterThan => ">",
-            Operator::GreaterThanEqual => ">=",
-            Operator::Is => "is",
-            Operator::Before => "<<",
-            Operator::After => ">>",
-        }
-    }
-}
+use super::xdmerror::{Error, ErrorKind};
 
 /// A concrete type that implements atomic values.
 /// These are the 19 predefined types in XSD Schema Part 2, plus five additional types.
 #[derive(Clone, Debug)]
 pub enum Value<'a> {
-    /// node or simple type
-    AnyType,
-    /// a not-yet-validated anyType
-    Untyped,
-    /// base type of all simple types. i.e. not a node
-    AnySimpleType,
-    /// a list of IDREF
-    IDREFS,
-    /// a list of NMTOKEN
-    NMTOKENS,
-    /// a list of ENTITY
-    ENTITIES,
-    /// Any numeric type
-    Numeric,
-    /// all atomic values (no lists or unions)
-    AnyAtomicType,
-    /// untyped atomic value
-    UntypedAtomic,
-    Duration,
-    Time(DateTime<Local>), // Ignore the date part. Perhaps use Instant instead?
-    Float(f32),
-    Double(f64),
-    Integer(i64),
-    NonPositiveInteger(NonPositiveInteger),
-    NegativeInteger(NegativeInteger),
-    Long(i64),
-    Int(i32),
-    Short(i16),
-    Byte(i8),
-    NonNegativeInteger(NonNegativeInteger),
-    UnsignedLong(u64),
-    UnsignedInt(u32),
-    UnsignedShort(u16),
-    UnsignedByte(u8),
-    PositiveInteger(PositiveInteger),
-    DateTime(DateTime<Local>),
-    DateTimeStamp,
-    Date(Date<Local>),
     String(&'a str),
     StringOwned(String),
-    NormalizedString(NormalizedString),
-    /// Like normalizedString, but without leading, trailing and consecutive whitespace
-    Token,
-    /// language identifiers [a-zA-Z]{1,8}(-[a-zA-Z0-9]{1,8})*
-    Language,
-    /// NameChar+
-    NMTOKEN,
-    /// NameStartChar NameChar+
-    Name,
-    /// (Letter | '_') NCNameChar+ (i.e. a Name without the colon)
-    NCName,
-    /// Same format as NCName
-    ID,
-    /// Same format as NCName
-    IDREF,
-    /// Same format as NCName
-    ENTITY,
-    Boolean(bool),
 }
 
 pub enum StringRepr<'a> {

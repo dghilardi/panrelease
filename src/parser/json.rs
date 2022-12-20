@@ -1,16 +1,18 @@
 use std::collections::HashMap;
+
 use anyhow::anyhow;
 use nom::{
     branch::alt,
     bytes::complete::{escaped, tag, take_while},
     character::complete::{alphanumeric1 as alphanumeric, char, one_of},
     combinator::{cut, map, opt, value},
-    error::{context, convert_error, ContextError, ErrorKind, ParseError, VerboseError},
+    error::{context, ContextError, ErrorKind, ParseError},
+    IResult,
     multi::separated_list0,
     number::complete::double,
     sequence::{delimited, preceded, separated_pair, terminated},
-    Err, IResult,
 };
+
 use crate::parser::FormatCodec;
 use crate::utils::get_range;
 
@@ -160,7 +162,7 @@ fn json_value<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
         alt((
             map(hash, JsonValue::Object),
             map(array, JsonValue::Array),
-            map(string, |s| JsonValue::Str(s)),
+            map(string, JsonValue::Str),
             map(double, JsonValue::Num),
             map(boolean, JsonValue::Boolean),
             map(null, |_| JsonValue::Null),
