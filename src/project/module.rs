@@ -1,9 +1,11 @@
 use std::path::PathBuf;
+use anyhow::bail;
 use crate::package::cargo::CargoPackage;
 use crate::package::maven::MavenPackage;
 use crate::package::npm::NpmPackage;
 use crate::package::PanPackage;
 use crate::project::config::{PackageManager, ProjectModule};
+use crate::runner::CmdRunner;
 
 pub struct PanModule {
     name: String,
@@ -28,6 +30,7 @@ impl PanModule {
             path,
             main: false,
             package_manager,
+            hooks: Default::default(),
         };
 
         Ok(Some(Self {
@@ -58,7 +61,16 @@ impl PanModule {
     }
 
     pub fn hook_after_rel(&mut self) -> anyhow::Result<()> {
-        self.package.hook_after_rel()
+        self.package.hook_after_rel()?;
+        for (name, full_command) in self.conf.hooks.after_rel.iter() {
+            let [command, args @ ..] = full_command.as_slice() else {
+                bail!("error reading '{name}' after_rel hook");
+            };
+            println!("running after_rel hook {name}");
+            let mut runner = CmdRunner::build(command, args)?;
+            runner.run()?;
+        }
+        Ok(())
     }
 }
 

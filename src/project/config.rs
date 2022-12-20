@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::fs;
 use std::path::{Path, PathBuf};
 use anyhow::{anyhow, Context};
@@ -25,6 +25,12 @@ pub struct ProjectModule {
     pub main: bool,
     #[serde(flatten)]
     pub package_manager: PackageManager,
+    pub hooks: ProjectHooks,
+}
+
+#[derive(Deserialize, Default, Debug, Clone)]
+pub struct ProjectHooks {
+    pub after_rel: BTreeMap<String, Vec<String>>,
 }
 
 fn default_main() -> bool {
