@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use std::str::FromStr;
 
 use clap::{Args, Parser, Subcommand, ValueEnum};
@@ -7,6 +8,8 @@ use semver::Prerelease;
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 pub struct PanReleaseArgs {
+    #[arg(short, long)]
+    pub path: Option<PathBuf>,
     #[clap(subcommand)]
     pub subcommand: Commands,
 }

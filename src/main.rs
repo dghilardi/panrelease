@@ -20,14 +20,17 @@ fn main() {
 
     let args: PanReleaseArgs = PanReleaseArgs::parse();
 
-    let Ok(cwd) = std::env::current_dir() else {
+    let Ok(cwd) = args.path.map(Ok).unwrap_or_else(std::env::current_dir) else {
         eprintln!("Error loading current directory");
         process::exit(exitcode::IOERR);
     };
 
-    let Ok(project) = PanProject::load(cwd.as_path()) else {
-        eprintln!("Error loading project");
-        process::exit(exitcode::IOERR);
+    let project = match PanProject::load(cwd.as_path()) {
+        Ok(p) => p,
+        Err(e) => {
+            eprintln!("Error loading project - {e}");
+            process::exit(exitcode::IOERR);
+        }
     };
 
     match args.subcommand {
