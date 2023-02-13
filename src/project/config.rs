@@ -27,6 +27,7 @@ pub struct ProjectModule {
     pub main: bool,
     #[serde(flatten)]
     pub package_manager: PackageManager,
+    #[serde(default)]
     pub hooks: ProjectHooks,
 }
 
