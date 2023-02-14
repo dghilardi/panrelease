@@ -12,6 +12,7 @@ use nom::{
     number::complete::double,
     sequence::{delimited, preceded, separated_pair, terminated},
 };
+use nom::character::complete::satisfy;
 
 use crate::parser::FormatCodec;
 use crate::utils::get_range;
@@ -82,7 +83,7 @@ fn space<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E>
 }
 
 fn parse_str<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E> {
-    escaped(alphanumeric, '\\', one_of("\"n\\"))(i)
+    escaped(satisfy(|c| !c.is_control() && !['\\', '"'].contains(&c)), '\\', one_of("\"n\\"))(i)
 }
 
 fn boolean<'a, E: ParseError<&'a str>>(input: &'a str) -> IResult<&'a str, bool, E> {
@@ -190,7 +191,7 @@ mod test {
 
     #[test]
     fn test_json_extraction() {
-        let input = JsonString::new(r#"{"hola":"world", "hey":{"hello":"world"}, "goodbye":"world"}"#);
+        let input = JsonString::new(r#"{"hola":"world", "hey":{"hello":"world"}, "goodbye":"world."}"#);
         let extracted = input.extract("hey.hello")
             .expect("Error extracting value")
             .expect("Value not found");
