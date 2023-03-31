@@ -2,7 +2,8 @@ use std::path::PathBuf;
 use std::str::FromStr;
 
 use clap::{Args, Parser, Subcommand, ValueEnum};
-use semver::Prerelease;
+use regex::Regex;
+use semver::{BuildMetadata, Prerelease};
 
 /// Simple program release and tag software versions
 #[derive(Parser, Debug)]
@@ -89,12 +90,12 @@ impl clap::builder::TypedValueParser for TargetVersionParser {
 
     fn possible_values(
         &self,
-    ) -> Option<Box<dyn Iterator<Item = clap::builder::PossibleValue> + '_>> {
+    ) -> Option<Box<dyn Iterator<Item=clap::builder::PossibleValue> + '_>> {
         let inner_parser = clap::builder::EnumValueParser::<BumpLevel>::new();
         #[allow(clippy::needless_collect)] // Erasing a lifetime
         inner_parser.possible_values().map(|ps| {
             let ps = ps.collect::<Vec<_>>();
-            let ps: Box<dyn Iterator<Item = clap::builder::PossibleValue> + '_> =
+            let ps: Box<dyn Iterator<Item=clap::builder::PossibleValue> + '_> =
                 Box::new(ps.into_iter());
             ps
         })
@@ -107,7 +108,7 @@ pub enum BumpLevel {
     Major,
     Minor,
     Patch,
-    Pre,
+    Post,
 }
 
 impl BumpLevel {
@@ -143,26 +144,91 @@ impl BumpLevel {
                     build: Default::default(),
                 }
             }
-            BumpLevel::Pre => {
-                let pre = current.pre.rfind('.').and_then(|sep_idx| {
-                    current.pre.as_str()[sep_idx+1..]
-                        .parse::<u64>()
-                        .ok()
-                        .map(|current_pre_v| Prerelease::new(&format!("{}.{}", &current.pre.as_str()[0..sep_idx], current_pre_v + 1)))
-                }).unwrap_or_else(|| if current.pre.is_empty() {
-                    Prerelease::new("pre.1")
-                } else {
-                    Prerelease::new(&format!("{}.1", current.pre.as_str()))
-                }).expect("Error constructing prerelease slug");
+            BumpLevel::Post => {
+                let build = parse_build(current.build.as_str()).map(|(name, ver)| {
+                    BuildMetadata::new(&format!("{}.r{}", name, ver.map(|v| v + 1).unwrap_or(1)))
+                })
+                    .unwrap_or_else(|| BuildMetadata::new("dev.r1"))
+                    .expect("Error constructing post-release slug");
 
                 semver::Version {
                     major: current.major,
                     minor: current.minor,
                     patch: current.patch,
-                    pre,
-                    build: Default::default(),
+                    pre: Default::default(),
+                    build,
                 }
             }
         }
+    }
+}
+
+fn parse_build(build_info: &str) -> Option<(&str, Option<u64>)> {
+    let re = Regex::new(r"(?P<name>[0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*)(\.r(?P<ver>\d+))$").unwrap();
+    re.captures(build_info)
+        .and_then(|captures| {
+            let ver = captures.name("ver")
+                .and_then(|m| m.as_str().parse::<u64>().ok());
+            captures.name("name").map(|name| (name.as_str(), ver))
+        })
+        .or(Some((build_info, None)))
+        .filter(|(name, ver)| !name.is_empty() || ver.is_some())
+}
+
+#[cfg(test)]
+mod test {
+    use semver::BuildMetadata;
+    use crate::args::{BumpLevel, parse_build};
+
+    #[test]
+    fn parse_simple_post_release() {
+        assert_eq!(Some(("build", Some(12))), parse_build("build.r12"))
+    }
+
+    #[test]
+    fn parse_no_ver_post_release() {
+        assert_eq!(Some(("build", None)), parse_build("build"))
+    }
+
+    #[test]
+    fn parse_complex_post_release() {
+        assert_eq!(Some(("feature-dev.rc", Some(12))), parse_build("feature-dev.rc.r012"))
+    }
+
+    #[test]
+    fn parse_invalid_post_release() {
+        assert_eq!(Some(("build.rc12", None)), parse_build("build.rc12"))
+    }
+
+    #[test]
+    fn increment_patch() {
+        assert_eq!(
+            String::from("1.2.4"),
+            BumpLevel::Patch.apply(semver::Version::parse("1.2.3").unwrap()).to_string()
+        )
+    }
+
+    #[test]
+    fn increment_minor() {
+        assert_eq!(
+            String::from("1.3.0"),
+            BumpLevel::Minor.apply(semver::Version::parse("1.2.3").unwrap()).to_string()
+        )
+    }
+
+    #[test]
+    fn increment_major() {
+        assert_eq!(
+            String::from("2.0.0"),
+            BumpLevel::Major.apply(semver::Version::parse("1.2.3").unwrap()).to_string()
+        )
+    }
+
+    #[test]
+    fn increment_postrel() {
+        assert_eq!(
+            String::from("1.2.3+feat.r2"),
+            BumpLevel::Post.apply(semver::Version::parse("1.2.3+feat.r1").unwrap()).to_string()
+        )
     }
 }
