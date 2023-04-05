@@ -3,7 +3,7 @@ use std::str::FromStr;
 
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use regex::Regex;
-use semver::{BuildMetadata, Prerelease};
+use semver::BuildMetadata;
 
 /// Simple program release and tag software versions
 #[derive(Parser, Debug)]

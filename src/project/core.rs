@@ -3,25 +3,22 @@ use std::path::{Path, PathBuf};
 
 use anyhow::anyhow;
 use chrono::Utc;
-use git2::{Repository, RepositoryOpenFlags, StatusOptions};
 
 use crate::args::RelArgs;
+use crate::git::GitRepo;
 use crate::project::config::PanProjectConfig;
 use crate::project::module::PanModule;
+use crate::system::FileSystem;
 
 pub struct PanProject {
     path: PathBuf,
     conf: PanProjectConfig,
-    repo: Repository,
+    repo: GitRepo,
 }
 
 impl PanProject {
-    pub fn load(path: &Path) -> anyhow::Result<Self> {
-        let repo = Repository::open_ext(
-            path,
-            RepositoryOpenFlags::empty(),
-            [path]
-        )?;
+    pub fn load<F: FileSystem>(path: &Path) -> anyhow::Result<Self> {
+        let repo = GitRepo::open::<F>(path)?;
         let project_root = repo.path().parent()
             .ok_or_else(|| anyhow!("Error extracting project path from repo"))?;
         let conf = PanProjectConfig::load(project_root)?;
@@ -34,13 +31,7 @@ impl PanProject {
     }
 
     pub fn release(&self, rel_args: RelArgs) -> anyhow::Result<()> {
-        let mut opts = StatusOptions::new();
-        opts
-            .include_unmodified(false)
-            .include_untracked(false)
-            .include_ignored(false);
-
-        if !self.repo.statuses(Some(&mut opts))?.is_empty() {
+        if !self.repo.is_staging_clean()? {
             return Err(anyhow!("Repository status is not clean"));
         }
         let new_version = rel_args.level_or_version.apply(self.extract_master()?.extract_version()?);
@@ -51,7 +42,7 @@ impl PanProject {
         }
 
         self.update_changelog(&new_version)?;
-        self.update_and_commit(new_version)?;
+        self.repo.update_and_commit(new_version)?;
 
         Ok(())
     }
@@ -63,28 +54,6 @@ impl PanProject {
             let updated_changelog = changelog_content.replace("\n## [Unreleased]", &format!("\n## [Unreleased]\n\n## [{version}] {}", Utc::now().format("%Y-%m-%d")));
             fs::write(&changelog_path, updated_changelog)?;
         }
-        Ok(())
-    }
-
-    fn update_and_commit(&self, version: semver::Version) -> anyhow::Result<()> {
-        let mut index = self.repo.index()?;
-        index.update_all(["*"].iter(), Some(&mut (|name, _content| {
-            log::debug!("Adding {:?}", name);
-            0
-        })))?;
-        index.write()?;
-
-        let signature = self.repo.signature()?;
-        let oid = index.write_tree()?;
-        let tree = self.repo.find_tree(oid)?;
-        let parent_commit = self.repo.head()?.peel_to_commit()?;
-
-        let descr = version.to_string();
-        let commit_oid = self.repo.commit(Some("HEAD"), &signature, &signature, &descr, &tree, &[&parent_commit])?;
-
-        let commit_obj = self.repo.find_object(commit_oid, None)?;
-        self.repo.tag_lightweight(&descr, &commit_obj, false)?;
-
         Ok(())
     }
 
