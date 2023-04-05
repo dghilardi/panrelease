@@ -1,4 +1,5 @@
 use std::fs;
+use std::marker::PhantomData;
 use std::path::{Path, PathBuf};
 
 use anyhow::anyhow;
@@ -10,14 +11,15 @@ use crate::project::config::PanProjectConfig;
 use crate::project::module::PanModule;
 use crate::system::FileSystem;
 
-pub struct PanProject {
+pub struct PanProject<F> {
     path: PathBuf,
     conf: PanProjectConfig,
     repo: GitRepo,
+    filesystem: PhantomData<F>,
 }
 
-impl PanProject {
-    pub fn load<F: FileSystem>(path: &Path) -> anyhow::Result<Self> {
+impl <F: FileSystem> PanProject<F> {
+    pub fn load(path: &Path) -> anyhow::Result<Self> {
         let repo = GitRepo::open::<F>(path)?;
         let project_root = repo.path().parent()
             .ok_or_else(|| anyhow!("Error extracting project path from repo"))?;
@@ -27,6 +29,7 @@ impl PanProject {
             path: path.to_path_buf(),
             conf,
             repo,
+            filesystem: PhantomData
         })
     }
 
@@ -60,7 +63,7 @@ impl PanProject {
     fn extract_modules(&self) -> anyhow::Result<Vec<PanModule>> {
         let modules = self.conf.modules()?;
         if modules.is_empty() {
-            let detected = PanModule::detect(self.path.clone())?
+            let detected = PanModule::detect::<F>(self.path.clone())?
                 .ok_or_else(|| anyhow!("Could not detect package"))?;
             Ok(vec![ detected ])
         } else {
@@ -73,7 +76,7 @@ impl PanProject {
         if let Some(master) = maybe_master {
             Ok(master)
         } else {
-            let detected = PanModule::detect(self.path.clone())?
+            let detected = PanModule::detect::<F>(self.path.clone())?
                 .ok_or_else(|| anyhow!("Could not detect package"))?;
             Ok(detected)
         }

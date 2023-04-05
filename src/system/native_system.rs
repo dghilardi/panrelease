@@ -22,4 +22,8 @@ impl FileSystem for NativeSystem {
     fn is_a_dir(path: &Path) -> bool {
         path.is_dir()
     }
+
+    fn is_a_file(path: &Path) -> bool {
+        path.is_file()
+    }
 }

@@ -8,6 +8,7 @@ use crate::package::npm::NpmPackage;
 use crate::package::PanPackage;
 use crate::project::config::{PackageManager, ProjectModule};
 use crate::runner::CmdRunner;
+use crate::system::FileSystem;
 
 pub struct PanModule {
     name: String,
@@ -24,8 +25,8 @@ impl PanModule {
         })
     }
 
-    pub fn detect(path: PathBuf) -> anyhow::Result<Option<Self>> {
-        let Some(package_manager) = PackageManager::detect(&path) else {
+    pub fn detect<F: FileSystem>(path: PathBuf) -> anyhow::Result<Option<Self>> {
+        let Some(package_manager) = PackageManager::detect::<F>(&path) else {
             return Ok(None)
         };
         let conf = ProjectModule {

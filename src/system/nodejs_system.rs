@@ -43,4 +43,9 @@ impl FileSystem for NodeJsSystem {
         wasm_utils::exists(path.to_str().expect("Invalid path"))
             .expect("Error checking file existence")
     }
+
+    fn is_a_file(path: &Path) -> bool {
+        wasm_utils::exists(path.to_str().expect("Invalid path"))
+            .expect("Error checking file existence")
+    }
 }

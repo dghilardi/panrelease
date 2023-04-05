@@ -11,5 +11,6 @@ pub trait FileSystem {
     fn write_string(path: &str, content: &str) -> Result<()>;
     fn current_dir() -> Result<PathBuf>;
     fn is_a_dir(path: &Path) -> bool;
+    fn is_a_file(path: &Path) -> bool;
 }
 

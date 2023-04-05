@@ -6,6 +6,7 @@ use anyhow::{anyhow, Context};
 use serde::Deserialize;
 
 use crate::project::module::PanModule;
+use crate::system::FileSystem;
 
 #[derive(Deserialize, Debug, Default)]
 pub struct PanProjectConfig {
@@ -49,12 +50,12 @@ pub enum PackageManager {
 }
 
 impl PackageManager {
-    pub fn detect(path: &Path) -> Option<Self> {
-        if path.join("Cargo.toml").is_file() {
+    pub fn detect<F: FileSystem>(path: &Path) -> Option<Self> {
+        if F::is_a_file(&path.join("Cargo.toml")) {
             Some(Self::Cargo)
-        } else if path.join("pom.xml").is_file() {
+        } else if F::is_a_file(&path.join("pom.xml")) {
             Some(Self::Maven)
-        } else if path.join("package.json").is_file() {
+        } else if F::is_a_file(&path.join("package.json")) {
             Some(Self::Npm)
         } else {
             None
