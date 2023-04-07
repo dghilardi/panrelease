@@ -77,7 +77,7 @@ impl <P> Default for PanProjectConfig<P> {
 impl <F: FileSystem + 'static> PanProjectConfig<F> {
     pub fn load(path: &Path) -> anyhow::Result<PanProjectConfig<F>> {
         let conf_file_path = path.join(".panproject.toml");
-        if !conf_file_path.exists() {
+        if !F::is_a_file(&conf_file_path) {
             return Ok(Default::default())
         }
         let conf_str = F::read_string(&conf_file_path)

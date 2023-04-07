@@ -14,7 +14,7 @@ impl GitRepo {
         loop {
             if F::is_a_dir(&current.join(".git")) {
                 break Ok(Self {
-                    path: current.to_path_buf(),
+                    path: current.join(".git").to_path_buf(),
                 })
             } else {
                 current = current.parent()
