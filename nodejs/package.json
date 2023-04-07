@@ -1,0 +1,20 @@
+{
+  "name": "panrelease",
+  "version": "0.8.0",
+  "description": "Utility to release software",
+  "keywords": [ "cli", "tool", "git", "release" ],
+  "homepage": "https://github.com/dghilardi/panrelease",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dghilardi/panrelease.git"
+  },
+  "author": "Davide Ghilardi <dghila@d71.dev>",
+  "main": "index.js",
+  "license": "MIT",
+  "bin": {
+    "env-reify": "./bin/index.js"
+  },
+  "scripts": {
+    "panrelease": "./bin/index.js"
+  }
+}

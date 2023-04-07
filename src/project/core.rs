@@ -1,27 +1,23 @@
-use std::fs;
 use std::path::{Path, PathBuf};
 
 use anyhow::anyhow;
 use chrono::Utc;
-use git2::{Repository, RepositoryOpenFlags, StatusOptions};
 
 use crate::args::RelArgs;
+use crate::git::GitRepo;
 use crate::project::config::PanProjectConfig;
 use crate::project::module::PanModule;
+use crate::system::FileSystem;
 
-pub struct PanProject {
+pub struct PanProject<F> {
     path: PathBuf,
-    conf: PanProjectConfig,
-    repo: Repository,
+    conf: PanProjectConfig<F>,
+    repo: GitRepo,
 }
 
-impl PanProject {
+impl <F: FileSystem + 'static> PanProject<F> {
     pub fn load(path: &Path) -> anyhow::Result<Self> {
-        let repo = Repository::open_ext(
-            path,
-            RepositoryOpenFlags::empty(),
-            [path]
-        )?;
+        let repo = GitRepo::open::<F>(path)?;
         let project_root = repo.path().parent()
             .ok_or_else(|| anyhow!("Error extracting project path from repo"))?;
         let conf = PanProjectConfig::load(project_root)?;
@@ -34,13 +30,7 @@ impl PanProject {
     }
 
     pub fn release(&self, rel_args: RelArgs) -> anyhow::Result<()> {
-        let mut opts = StatusOptions::new();
-        opts
-            .include_unmodified(false)
-            .include_untracked(false)
-            .include_ignored(false);
-
-        if !self.repo.statuses(Some(&mut opts))?.is_empty() {
+        if !self.repo.is_staging_clean()? {
             return Err(anyhow!("Repository status is not clean"));
         }
         let new_version = rel_args.level_or_version.apply(self.extract_master()?.extract_version()?);
@@ -51,44 +41,22 @@ impl PanProject {
         }
 
         self.update_changelog(&new_version)?;
-        self.update_and_commit(new_version)?;
+        self.repo.update_and_commit(new_version)?;
 
         Ok(())
     }
 
     fn update_changelog(&self, version: &semver::Version) -> anyhow::Result<()> {
         let changelog_path = self.path.join("CHANGELOG.md");
-        if changelog_path.is_file() {
-            let changelog_content = fs::read_to_string(&changelog_path)?;
+        if F::is_a_file(&changelog_path) {
+            let changelog_content = F::read_string(&changelog_path)?;
             let updated_changelog = changelog_content.replace("\n## [Unreleased]", &format!("\n## [Unreleased]\n\n## [{version}] {}", Utc::now().format("%Y-%m-%d")));
-            fs::write(&changelog_path, updated_changelog)?;
+            F::write_string(&changelog_path, &updated_changelog)?;
         }
         Ok(())
     }
 
-    fn update_and_commit(&self, version: semver::Version) -> anyhow::Result<()> {
-        let mut index = self.repo.index()?;
-        index.update_all(["*"].iter(), Some(&mut (|name, _content| {
-            log::debug!("Adding {:?}", name);
-            0
-        })))?;
-        index.write()?;
-
-        let signature = self.repo.signature()?;
-        let oid = index.write_tree()?;
-        let tree = self.repo.find_tree(oid)?;
-        let parent_commit = self.repo.head()?.peel_to_commit()?;
-
-        let descr = version.to_string();
-        let commit_oid = self.repo.commit(Some("HEAD"), &signature, &signature, &descr, &tree, &[&parent_commit])?;
-
-        let commit_obj = self.repo.find_object(commit_oid, None)?;
-        self.repo.tag_lightweight(&descr, &commit_obj, false)?;
-
-        Ok(())
-    }
-
-    fn extract_modules(&self) -> anyhow::Result<Vec<PanModule>> {
+    fn extract_modules(&self) -> anyhow::Result<Vec<PanModule<F>>> {
         let modules = self.conf.modules()?;
         if modules.is_empty() {
             let detected = PanModule::detect(self.path.clone())?
@@ -99,7 +67,7 @@ impl PanProject {
         }
     }
 
-    fn extract_master(&self) -> anyhow::Result<PanModule> {
+    fn extract_master(&self) -> anyhow::Result<PanModule<F>> {
         let maybe_master = self.conf.extract_master_mod()?;
         if let Some(master) = maybe_master {
             Ok(master)
