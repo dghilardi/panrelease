@@ -1,4 +1,4 @@
-use std::fs;
+use std::marker::PhantomData;
 use std::path::PathBuf;
 
 use anyhow::anyhow;
@@ -8,23 +8,26 @@ use crate::package::PanPackage;
 use crate::parser::FormatCodec;
 use crate::parser::json::JsonString;
 use crate::runner::CmdRunner;
+use crate::system::FileSystem;
 
-pub struct NpmPackage {
+pub struct NpmPackage<F> {
     path: PathBuf,
     doc: JsonString,
+    filesystem: PhantomData<F>
 }
 
-impl NpmPackage {
+impl <F: FileSystem> NpmPackage<F> {
     pub fn new(path: PathBuf) -> anyhow::Result<Self> {
-        let package_str = fs::read_to_string(path.join("package.json"))?;
+        let package_str = F::read_string(&path.join("package.json"))?;
         Ok(Self {
             path,
             doc: JsonString::new(&package_str),
+            filesystem: PhantomData
         })
     }
 }
 
-impl PanPackage for NpmPackage {
+impl <F: FileSystem> PanPackage for NpmPackage<F> {
     fn extract_version(&self) -> anyhow::Result<Version> {
         self.doc.extract("version")?
             .ok_or_else(|| anyhow!("Could not find version in package.json"))
@@ -36,16 +39,16 @@ impl PanPackage for NpmPackage {
     }
 
     fn persist(&self) -> anyhow::Result<()> {
-        fs::write(self.path.join("package.json"), self.doc.to_string())?;
+        F::write_string(&self.path.join("package.json"), &self.doc.to_string())?;
         Ok(())
     }
 
     fn hook_after_rel(&self) -> anyhow::Result<()> {
-        let mut runner = if self.path.join("package-lock.json").is_file() {
+        let mut runner = if F::is_a_file(&self.path.join("package-lock.json")) {
             CmdRunner::build("npm", &[String::from("i"), String::from("--package-lock-only")], &self.path)?
-        } else if self.path.join("yarn.lock").is_file() {
+        } else if F::is_a_file(&self.path.join("yarn.lock")) {
             CmdRunner::build("yarn", &[String::from("--mode"), String::from("update-lockfile")], &self.path)?
-        } else if self.path.join("pnpm-lock.yaml").is_file() {
+        } else if F::is_a_file(&self.path.join("pnpm-lock.yaml")) {
             CmdRunner::build("echo", &[String::from("lockfile update skipped")], &self.path)?
         } else {
             anyhow::bail!("Cannot find any lockfile for package.json")

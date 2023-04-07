@@ -1,5 +1,5 @@
 use std::collections::{BTreeMap, HashMap};
-use std::fs;
+use std::marker::PhantomData;
 use std::path::{Path, PathBuf};
 
 use anyhow::{anyhow, Context};
@@ -8,10 +8,11 @@ use serde::Deserialize;
 use crate::project::module::PanModule;
 use crate::system::FileSystem;
 
-#[derive(Deserialize, Debug, Default)]
-pub struct PanProjectConfig {
+#[derive(Deserialize, Debug)]
+pub struct PanProjectConfig<F> {
     vcs: VcsConfig,
     modules: HashMap<String, ProjectModule>,
+    filesystem: PhantomData<F>,
 }
 
 #[derive(Deserialize, Debug, Default)]
@@ -63,15 +64,25 @@ impl PackageManager {
     }
 }
 
-impl PanProjectConfig {
-    pub fn load(path: &Path) -> anyhow::Result<PanProjectConfig> {
+impl <P> Default for PanProjectConfig<P> {
+    fn default() -> Self {
+        Self {
+            vcs: Default::default(),
+            modules: Default::default(),
+            filesystem: PhantomData,
+        }
+    }
+}
+
+impl <F: FileSystem + 'static> PanProjectConfig<F> {
+    pub fn load(path: &Path) -> anyhow::Result<PanProjectConfig<F>> {
         let conf_file_path = path.join(".panproject.toml");
         if !conf_file_path.exists() {
             return Ok(Default::default())
         }
-        let conf_str = fs::read_to_string(conf_file_path)
+        let conf_str = F::read_string(&conf_file_path)
             .with_context(|| format!("Failed to read .panproject.toml from {:?}", path))?;
-        let mut conf: PanProjectConfig = toml::from_str(&conf_str)?;
+        let mut conf: PanProjectConfig<F> = toml::from_str(&conf_str)?;
 
         conf.modules.iter_mut()
             .map(|(mod_name, conf)| {
@@ -87,19 +98,19 @@ impl PanProjectConfig {
         match module_conf.package_manager {
             PackageManager::Cargo => {
                 let cargo_toml_path = module_conf.path.join("Cargo.toml");
-                if !cargo_toml_path.is_file() {
+                if !F::is_a_file(&cargo_toml_path) {
                     return Err(anyhow!("Error during {mod_name} module validation. {:?} is not a valid file", cargo_toml_path));
                 }
             }
             PackageManager::Npm => {
                 let cargo_toml_path = module_conf.path.join("package.json");
-                if !cargo_toml_path.is_file() {
+                if !F::is_a_file(&cargo_toml_path) {
                     return Err(anyhow!("Error during {mod_name} module validation. {:?} is not a valid file", cargo_toml_path));
                 }
             }
             PackageManager::Maven => {
                 let cargo_toml_path = module_conf.path.join("pom.xml");
-                if !cargo_toml_path.is_file() {
+                if !F::is_a_file(&cargo_toml_path) {
                     return Err(anyhow!("Error during {mod_name} module validation. {:?} is not a valid file", cargo_toml_path));
                 }
             }
@@ -107,7 +118,7 @@ impl PanProjectConfig {
         Ok(())
     }
 
-    pub fn extract_master_mod(&self) -> anyhow::Result<Option<PanModule>> {
+    pub fn extract_master_mod(&self) -> anyhow::Result<Option<PanModule<F>>> {
         if self.modules.is_empty() {
             Ok(None)
         } else if self.modules.len() == 1 {
@@ -129,7 +140,7 @@ impl PanProjectConfig {
         }
     }
 
-    pub fn modules(&self) -> anyhow::Result<Vec<PanModule>> {
+    pub fn modules(&self) -> anyhow::Result<Vec<PanModule<F>>> {
         self.modules.iter()
             .map(|(name, conf)| PanModule::new(String::from(name), conf.clone()))
             .collect()

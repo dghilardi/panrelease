@@ -2,15 +2,16 @@ use std::path::{Path, PathBuf};
 
 use crate::system::contract::FileSystem;
 
+#[derive(Default)]
 pub struct NativeSystem;
 
 impl FileSystem for NativeSystem {
-    fn read_string(path: &str) -> anyhow::Result<String> {
+    fn read_string(path: &Path) -> anyhow::Result<String> {
         let content = std::fs::read_to_string(path)?;
         Ok(content)
     }
 
-    fn write_string(path: &str, content: &str) -> anyhow::Result<()> {
+    fn write_string(path: &Path, content: &str) -> anyhow::Result<()> {
         std::fs::write(path, content)?;
         Ok(())
     }

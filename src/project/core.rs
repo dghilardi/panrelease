@@ -1,5 +1,3 @@
-use std::fs;
-use std::marker::PhantomData;
 use std::path::{Path, PathBuf};
 
 use anyhow::anyhow;
@@ -13,12 +11,11 @@ use crate::system::FileSystem;
 
 pub struct PanProject<F> {
     path: PathBuf,
-    conf: PanProjectConfig,
+    conf: PanProjectConfig<F>,
     repo: GitRepo,
-    filesystem: PhantomData<F>,
 }
 
-impl <F: FileSystem> PanProject<F> {
+impl <F: FileSystem + 'static> PanProject<F> {
     pub fn load(path: &Path) -> anyhow::Result<Self> {
         let repo = GitRepo::open::<F>(path)?;
         let project_root = repo.path().parent()
@@ -29,7 +26,6 @@ impl <F: FileSystem> PanProject<F> {
             path: path.to_path_buf(),
             conf,
             repo,
-            filesystem: PhantomData
         })
     }
 
@@ -52,18 +48,18 @@ impl <F: FileSystem> PanProject<F> {
 
     fn update_changelog(&self, version: &semver::Version) -> anyhow::Result<()> {
         let changelog_path = self.path.join("CHANGELOG.md");
-        if changelog_path.is_file() {
-            let changelog_content = fs::read_to_string(&changelog_path)?;
+        if F::is_a_file(&changelog_path) {
+            let changelog_content = F::read_string(&changelog_path)?;
             let updated_changelog = changelog_content.replace("\n## [Unreleased]", &format!("\n## [Unreleased]\n\n## [{version}] {}", Utc::now().format("%Y-%m-%d")));
-            fs::write(&changelog_path, updated_changelog)?;
+            F::write_string(&changelog_path, &updated_changelog)?;
         }
         Ok(())
     }
 
-    fn extract_modules(&self) -> anyhow::Result<Vec<PanModule>> {
+    fn extract_modules(&self) -> anyhow::Result<Vec<PanModule<F>>> {
         let modules = self.conf.modules()?;
         if modules.is_empty() {
-            let detected = PanModule::detect::<F>(self.path.clone())?
+            let detected = PanModule::detect(self.path.clone())?
                 .ok_or_else(|| anyhow!("Could not detect package"))?;
             Ok(vec![ detected ])
         } else {
@@ -71,12 +67,12 @@ impl <F: FileSystem> PanProject<F> {
         }
     }
 
-    fn extract_master(&self) -> anyhow::Result<PanModule> {
+    fn extract_master(&self) -> anyhow::Result<PanModule<F>> {
         let maybe_master = self.conf.extract_master_mod()?;
         if let Some(master) = maybe_master {
             Ok(master)
         } else {
-            let detected = PanModule::detect::<F>(self.path.clone())?
+            let detected = PanModule::detect(self.path.clone())?
                 .ok_or_else(|| anyhow!("Could not detect package"))?;
             Ok(detected)
         }

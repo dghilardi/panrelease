@@ -7,8 +7,8 @@ pub trait EnvVars {
 }
 
 pub trait FileSystem {
-    fn read_string(path: &str) -> Result<String>;
-    fn write_string(path: &str, content: &str) -> Result<()>;
+    fn read_string(path: &Path) -> Result<String>;
+    fn write_string(path: &Path, content: &str) -> Result<()>;
     fn current_dir() -> Result<PathBuf>;
     fn is_a_dir(path: &Path) -> bool;
     fn is_a_file(path: &Path) -> bool;

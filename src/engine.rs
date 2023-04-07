@@ -10,7 +10,7 @@ pub fn run<I, T, S>(args: I) -> anyhow::Result<()>
     where
         I: IntoIterator<Item = T>,
         T: Into<OsString> + Clone,
-        S: FileSystem,
+        S: FileSystem + 'static,
 {
     let opts = PanReleaseArgs::try_parse_from(args)
         .context("Error parsing args")?;

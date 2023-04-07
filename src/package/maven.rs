@@ -1,4 +1,4 @@
-use std::fs;
+use std::marker::PhantomData;
 use std::path::PathBuf;
 
 use anyhow::anyhow;
@@ -8,23 +8,26 @@ use semver::Version;
 use crate::package::PanPackage;
 use crate::parser::FormatCodec;
 use crate::parser::xml::xmlstring::XmlString;
+use crate::system::FileSystem;
 
-pub struct MavenPackage {
+pub struct MavenPackage<F> {
     path: PathBuf,
     doc: XmlString,
+    filesystem: PhantomData<F>
 }
 
-impl MavenPackage {
+impl <F: FileSystem> MavenPackage<F> {
     pub fn new(path: PathBuf) -> anyhow::Result<Self> {
-        let package_str = fs::read_to_string(path.join("pom.xml"))?;
+        let package_str = F::read_string(&path.join("pom.xml"))?;
         Ok(Self {
             path,
             doc: XmlString::new(&package_str),
+            filesystem: PhantomData,
         })
     }
 }
 
-impl PanPackage for MavenPackage {
+impl <F: FileSystem> PanPackage for MavenPackage<F> {
     fn extract_version(&self) -> anyhow::Result<Version> {
         let version_str = self.doc.extract("project/version")?
             .ok_or_else(|| anyhow!("Could not find version in pom.xml"))?;
@@ -60,7 +63,7 @@ impl PanPackage for MavenPackage {
     }
 
     fn persist(&self) -> anyhow::Result<()> {
-        fs::write(self.path.join("pom.xml"), self.doc.to_string())?;
+        F::write_string(&self.path.join("pom.xml"), &self.doc.to_string())?;
         Ok(())
     }
 

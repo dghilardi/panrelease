@@ -4,7 +4,7 @@ use anyhow::anyhow;
 use crate::system::contract::{EnvVars, FileSystem};
 use crate::wasm_utils;
 
-
+#[derive(Default)]
 pub struct NodeJsSystem;
 
 impl EnvVars for NodeJsSystem {
@@ -22,14 +22,14 @@ impl EnvVars for NodeJsSystem {
 }
 
 impl FileSystem for NodeJsSystem {
-    fn read_string(path: &str) -> anyhow::Result<String> {
-        let content = wasm_utils::read_file(path, "utf8")
+    fn read_string(path: &Path) -> anyhow::Result<String> {
+        let content = wasm_utils::read_file(path.to_str().expect("invalid path"), "utf8")
             .map_err(|e| anyhow!("Error reading file - {e:?}"))?;
         Ok(content)
     }
 
-    fn write_string(path: &str, content: &str) -> anyhow::Result<()> {
-        wasm_utils::write_file(path, content)
+    fn write_string(path: &Path, content: &str) -> anyhow::Result<()> {
+        wasm_utils::write_file(path.to_str().expect("invalid path"), content)
             .map_err(|e| anyhow!("Error writing file - {e:?}"))?;
         Ok(())
     }

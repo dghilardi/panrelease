@@ -1,3 +1,4 @@
+use std::marker::PhantomData;
 use std::path::PathBuf;
 
 use anyhow::bail;
@@ -10,22 +11,24 @@ use crate::project::config::{PackageManager, ProjectModule};
 use crate::runner::CmdRunner;
 use crate::system::FileSystem;
 
-pub struct PanModule {
+pub struct PanModule<F> {
     name: String,
     conf: ProjectModule,
     package: Box<dyn PanPackage>,
+    filesystem: PhantomData<F>,
 }
 
-impl PanModule {
+impl <F: FileSystem + 'static> PanModule<F> {
     pub fn new(name: String, conf: ProjectModule) -> anyhow::Result<Self> {
         Ok(Self {
             name,
             package: Self::extract_package(&conf)?,
             conf,
+            filesystem: PhantomData
         })
     }
 
-    pub fn detect<F: FileSystem>(path: PathBuf) -> anyhow::Result<Option<Self>> {
+    pub fn detect(path: PathBuf) -> anyhow::Result<Option<Self>> {
         let Some(package_manager) = PackageManager::detect::<F>(&path) else {
             return Ok(None)
         };
@@ -40,14 +43,15 @@ impl PanModule {
             name: String::from("<detected>"),
             package: Self::extract_package(&conf)?,
             conf,
+            filesystem: PhantomData
         }))
     }
 
     fn extract_package(conf: &ProjectModule) -> anyhow::Result<Box<dyn PanPackage>> {
         Ok(match conf.package_manager {
-            PackageManager::Cargo => Box::new(CargoPackage::new(conf.path.clone())?),
-            PackageManager::Npm => Box::new(NpmPackage::new(conf.path.clone())?),
-            PackageManager::Maven => Box::new(MavenPackage::new(conf.path.clone())?),
+            PackageManager::Cargo => Box::new(CargoPackage::<F>::new(conf.path.clone())?),
+            PackageManager::Npm => Box::new(NpmPackage::<F>::new(conf.path.clone())?),
+            PackageManager::Maven => Box::new(MavenPackage::<F>::new(conf.path.clone())?),
         })
     }
 
