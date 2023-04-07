@@ -12,6 +12,7 @@ use crate::system::FileSystem;
 pub struct PanProjectConfig<F> {
     vcs: VcsConfig,
     modules: HashMap<String, ProjectModule>,
+    #[serde(skip_deserializing,skip_serializing)]
     filesystem: PhantomData<F>,
 }
 
