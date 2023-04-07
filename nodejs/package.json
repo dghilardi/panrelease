@@ -12,7 +12,7 @@
   "main": "index.js",
   "license": "MIT",
   "bin": {
-    "env-reify": "./bin/index.js"
+    "panrelease": "./bin/index.js"
   },
   "scripts": {
     "panrelease": "./bin/index.js"
