@@ -1,6 +1,6 @@
 {
   "name": "panrelease",
-  "version": "0.9.2",
+  "version": "0.10.0",
   "description": "Utility to release software",
   "keywords": [ "cli", "tool", "git", "release" ],
   "homepage": "https://github.com/dghilardi/panrelease",
