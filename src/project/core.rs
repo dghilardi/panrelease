@@ -2,12 +2,15 @@ use std::path::{Path, PathBuf};
 
 use anyhow::{anyhow, Context};
 use chrono::Utc;
+use regex::Regex;
 
 use crate::args::RelArgs;
 use crate::git::GitRepo;
 use crate::project::config::{PanProjectConfig, VcsConfig};
 use crate::project::module::PanModule;
 use crate::system::FileSystem;
+
+const UNRELEASED_LINE: &str = "\n## [Unreleased]";
 
 pub struct PanProject<F> {
     path: PathBuf,
@@ -53,8 +56,17 @@ impl <F: FileSystem + 'static> PanProject<F> {
     fn update_changelog(&self, version: &semver::Version) -> anyhow::Result<()> {
         let changelog_path = self.path.join("CHANGELOG.md");
         if F::is_a_file(&changelog_path) {
-            let changelog_content = F::read_string(&changelog_path)?;
-            let updated_changelog = changelog_content.replace("\n## [Unreleased]", &format!("\n## [Unreleased]\n\n## [{version}] {}", Utc::now().format("%Y-%m-%d")));
+            let mut changelog_content = F::read_string(&changelog_path)?;
+            if !changelog_content.contains("\n## ") {
+                changelog_content.push_str(UNRELEASED_LINE);
+            } else if !changelog_content.contains(UNRELEASED_LINE) {
+                changelog_content = Regex::new("(?=\n## )")
+                    .expect("Invalid regex")
+                    .replace(&changelog_content, UNRELEASED_LINE)
+                    .to_string();
+            }
+
+            let updated_changelog = changelog_content.replace(UNRELEASED_LINE, &format!("{UNRELEASED_LINE}\n\n## [{version}] {}", Utc::now().format("%Y-%m-%d")));
             F::write_string(&changelog_path, &updated_changelog)?;
         }
         Ok(())
