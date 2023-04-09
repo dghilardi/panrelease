@@ -30,7 +30,7 @@ impl <F: FileSystem + 'static> PanProject<F> {
         let repo = GitRepo::open::<F>(git_conf.clone(), path)?;
 
         Ok(Self {
-            path: path.to_path_buf(),
+            path: project_root.to_path_buf(),
             conf,
             repo,
         })
