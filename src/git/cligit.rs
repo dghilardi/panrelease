@@ -30,10 +30,6 @@ impl GitRepo {
         }
     }
 
-    pub fn path(&self) -> &Path {
-        self.path.as_path()
-    }
-
     pub fn is_staging_clean(&self) -> anyhow::Result<bool> {
         let mut runner = CmdRunner::build("git", &[String::from("status"), String::from("--porcelain=v1")], &self.path)?;
         let out = runner.output()

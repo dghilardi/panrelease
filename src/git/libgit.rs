@@ -29,10 +29,6 @@ impl GitRepo {
         }
     }
 
-    pub fn path(&self) -> &Path {
-        self.repo.path()
-    }
-
     pub fn is_staging_clean(&self) -> anyhow::Result<bool> {
         let mut opts = StatusOptions::new();
         opts
