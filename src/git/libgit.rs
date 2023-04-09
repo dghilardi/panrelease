@@ -1,16 +1,32 @@
 use std::path::Path;
+use anyhow::anyhow;
 use git2::{Repository, RepositoryOpenFlags, StatusOptions};
+use crate::project::config::GitConfig;
 use crate::system::FileSystem;
 
 pub struct GitRepo {
+    config: GitConfig,
     repo: Repository,
 }
 
 impl GitRepo {
-    pub fn open<F: FileSystem>(path: &Path) -> anyhow::Result<Self> {
+    pub fn open<F: FileSystem>(config: GitConfig, path: &Path) -> anyhow::Result<Self> {
         Ok(Self {
+            config,
             repo: Repository::open_ext(path, RepositoryOpenFlags::empty(), [path])?
         })
+    }
+
+    pub fn find_git_root<F: FileSystem>(path: &Path) -> anyhow::Result<&Path> {
+        let mut current = path;
+        loop {
+            if F::is_a_dir(&current.join(".git")) {
+                break Ok(current);
+            } else {
+                current = current.parent()
+                    .ok_or(anyhow!("Could not find repo dir"))?;
+            }
+        }
     }
 
     pub fn path(&self) -> &Path {

@@ -1,21 +1,28 @@
 use std::path::{Path, PathBuf};
 use anyhow::anyhow;
+use crate::project::config::GitConfig;
 use crate::runner::CmdRunner;
 use crate::system::FileSystem;
 use crate::wasm_utils::log;
 
 pub struct GitRepo {
+    config: GitConfig,
     path: PathBuf,
 }
 
 impl GitRepo {
-    pub fn open<F: FileSystem>(path: &Path) -> anyhow::Result<Self> {
+    pub fn open<F: FileSystem>(config: GitConfig, path: &Path) -> anyhow::Result<Self> {
+        Ok(Self {
+            config,
+            path: Self::find_git_root::<F>(path)?.join(".git").to_path_buf(),
+        })
+    }
+
+    pub fn find_git_root<F: FileSystem>(path: &Path) -> anyhow::Result<&Path> {
         let mut current = path;
         loop {
             if F::is_a_dir(&current.join(".git")) {
-                break Ok(Self {
-                    path: current.join(".git").to_path_buf(),
-                })
+                break Ok(current);
             } else {
                 current = current.parent()
                     .ok_or(anyhow!("Could not find repo dir"))?;
@@ -46,9 +53,11 @@ impl GitRepo {
 
         let descr = version.to_string();
 
-        CmdRunner::build("git", &[String::from("commit"), String::from("-m"), descr.clone()], &self.path)?
+        CmdRunner::build("git", &[String::from("commit"), String::from("-m"), descr], &self.path)?
             .run()?;
-        CmdRunner::build("git", &[String::from("tag"), descr.clone()], &self.path)?
+
+        let tag_descr = self.config.tag_template.replace("{{version}}", &version.to_string());
+        CmdRunner::build("git", &[String::from("tag"), tag_descr], &self.path)?
             .run()?;
 
         Ok(())

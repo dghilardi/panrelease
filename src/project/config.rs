@@ -10,17 +10,31 @@ use crate::system::FileSystem;
 
 #[derive(Deserialize, Debug)]
 pub struct PanProjectConfig<F> {
+    #[serde(default = "default_vcs_config")]
     vcs: VcsConfig,
     modules: HashMap<String, ProjectModule>,
     #[serde(skip_deserializing,skip_serializing)]
     filesystem: PhantomData<F>,
 }
 
-#[derive(Deserialize, Debug, Default)]
+#[derive(Deserialize, Debug)]
 #[serde(tag = "software")]
 pub enum VcsConfig {
-    #[default]
-    Git,
+    Git(GitConfig),
+}
+
+fn default_vcs_config() -> VcsConfig {
+    VcsConfig::Git(GitConfig::default())
+}
+
+#[derive(Deserialize, Clone, Debug, Default)]
+pub struct GitConfig {
+    #[serde(default = "default_tag_template")]
+    pub tag_template: String
+}
+
+fn default_tag_template() -> String {
+    String::from("{{version}}")
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -68,7 +82,7 @@ impl PackageManager {
 impl <P> Default for PanProjectConfig<P> {
     fn default() -> Self {
         Self {
-            vcs: Default::default(),
+            vcs: default_vcs_config(),
             modules: Default::default(),
             filesystem: PhantomData,
         }
@@ -93,6 +107,10 @@ impl <F: FileSystem + 'static> PanProjectConfig<F> {
             .collect::<Result<Vec<()>, _>>()?;
 
         Ok(conf)
+    }
+
+    pub fn vcs(&self) -> &VcsConfig {
+        &self.vcs
     }
 
     fn validate_module(mod_name: &str, module_conf: &ProjectModule) -> anyhow::Result<()> {

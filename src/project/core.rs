@@ -1,11 +1,11 @@
 use std::path::{Path, PathBuf};
 
-use anyhow::anyhow;
+use anyhow::{anyhow, Context};
 use chrono::Utc;
 
 use crate::args::RelArgs;
 use crate::git::GitRepo;
-use crate::project::config::PanProjectConfig;
+use crate::project::config::{PanProjectConfig, VcsConfig};
 use crate::project::module::PanModule;
 use crate::system::FileSystem;
 
@@ -17,10 +17,14 @@ pub struct PanProject<F> {
 
 impl <F: FileSystem + 'static> PanProject<F> {
     pub fn load(path: &Path) -> anyhow::Result<Self> {
-        let repo = GitRepo::open::<F>(path)?;
-        let project_root = repo.path().parent()
-            .ok_or_else(|| anyhow!("Error extracting project path from repo"))?;
+        let project_root = GitRepo::find_git_root::<F>(path)
+            .context("Error extracting project path from repo")?;
         let conf = PanProjectConfig::load(project_root)?;
+
+        let git_conf = match conf.vcs() {
+            VcsConfig::Git(git_conf) => git_conf,
+        };
+        let repo = GitRepo::open::<F>(git_conf.clone(), path)?;
 
         Ok(Self {
             path: path.to_path_buf(),
