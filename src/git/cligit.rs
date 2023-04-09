@@ -14,7 +14,7 @@ impl GitRepo {
     pub fn open<F: FileSystem>(config: GitConfig, path: &Path) -> anyhow::Result<Self> {
         Ok(Self {
             config,
-            path: Self::find_git_root::<F>(path)?.join(".git").to_path_buf(),
+            path: Self::find_git_root::<F>(path)?.to_path_buf(),
         })
     }
 
