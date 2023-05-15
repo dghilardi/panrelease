@@ -44,7 +44,7 @@ impl <F: FileSystem> PanPackage for CargoPackage<F> {
     }
 
     fn hook_after_rel(&self) -> anyhow::Result<()> {
-        let mut runner = CmdRunner::build("cargo", &[String::from("generate-lockfile")], &self.path)?;
+        let mut runner = CmdRunner::build("cargo", &[String::from("check")], &self.path)?;
         runner.run()?;
         Ok(())
     }
