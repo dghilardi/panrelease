@@ -27,10 +27,18 @@ fn default_vcs_config() -> VcsConfig {
     VcsConfig::Git(GitConfig::default())
 }
 
-#[derive(Deserialize, Clone, Debug, Default)]
+#[derive(Deserialize, Clone, Debug)]
 pub struct GitConfig {
     #[serde(default = "default_tag_template")]
     pub tag_template: String
+}
+
+impl Default for GitConfig {
+    fn default() -> Self {
+        Self {
+            tag_template: default_tag_template(),
+        }
+    }
 }
 
 fn default_tag_template() -> String {
