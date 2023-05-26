@@ -1,5 +1,6 @@
 use std::ffi::OsString;
 use anyhow::{bail, Context};
+use clap::error::ErrorKind;
 use clap::Parser;
 use futures::executor::block_on;
 use crate::args::{Commands, PanReleaseArgs};
@@ -12,8 +13,11 @@ pub fn run<I, T, S>(args: I) -> anyhow::Result<()>
         T: Into<OsString> + Clone,
         S: FileSystem + 'static,
 {
-    let opts = PanReleaseArgs::try_parse_from(args)
-        .context("Error parsing args")?;
+    let opts = match PanReleaseArgs::try_parse_from(args) {
+        Ok(opts) => opts,
+        Err(err) => err.exit(),
+    };
+
     let project = ConfigLoader::parse_config::<S>(opts.path)
         .context("Error parsing configuration file")?;
 
