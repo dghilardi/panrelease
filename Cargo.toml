@@ -1,6 +1,6 @@
 [package]
 name = "panrelease"
-version = "0.11.2"
+version = "0.11.3"
 edition = "2021"
 authors = ["Davide Ghilardi <dghila@d71.dev>"]
 description = "Utility to release software"
