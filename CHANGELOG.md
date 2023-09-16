@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.12.1] 2023-09-16
+
 ## [0.12.0] 2023-09-16
 ### Add
 - Add `force_sign` config field for git configuration
