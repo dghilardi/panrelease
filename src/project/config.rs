@@ -13,7 +13,7 @@ pub struct PanProjectConfig<F> {
     #[serde(default = "default_vcs_config")]
     vcs: VcsConfig,
     modules: HashMap<String, ProjectModule>,
-    #[serde(skip_deserializing,skip_serializing)]
+    #[serde(skip_deserializing, skip_serializing)]
     filesystem: PhantomData<F>,
 }
 
@@ -29,8 +29,10 @@ fn default_vcs_config() -> VcsConfig {
 
 #[derive(Deserialize, Clone, Debug)]
 pub struct GitConfig {
+    #[serde(default)]
+    pub force_sign: bool,
     #[serde(default = "default_tag_template")]
-    pub tag_template: String
+    pub tag_template: String,
 }
 
 impl Default for GitConfig {
@@ -87,7 +89,7 @@ impl PackageManager {
     }
 }
 
-impl <P> Default for PanProjectConfig<P> {
+impl<P> Default for PanProjectConfig<P> {
     fn default() -> Self {
         Self {
             vcs: default_vcs_config(),
@@ -97,17 +99,18 @@ impl <P> Default for PanProjectConfig<P> {
     }
 }
 
-impl <F: FileSystem + 'static> PanProjectConfig<F> {
+impl<F: FileSystem + 'static> PanProjectConfig<F> {
     pub fn load(path: &Path) -> anyhow::Result<PanProjectConfig<F>> {
         let conf_file_path = path.join(".panproject.toml");
         if !F::is_a_file(&conf_file_path) {
-            return Ok(Default::default())
+            return Ok(Default::default());
         }
         let conf_str = F::read_string(&conf_file_path)
             .with_context(|| format!("Failed to read .panproject.toml from {:?}", path))?;
         let mut conf: PanProjectConfig<F> = toml::from_str(&conf_str)?;
 
-        conf.modules.iter_mut()
+        conf.modules
+            .iter_mut()
             .map(|(mod_name, conf)| {
                 conf.path = path.join(&conf.path);
                 Self::validate_module(mod_name, conf)
@@ -126,19 +129,28 @@ impl <F: FileSystem + 'static> PanProjectConfig<F> {
             PackageManager::Cargo => {
                 let cargo_toml_path = module_conf.path.join("Cargo.toml");
                 if !F::is_a_file(&cargo_toml_path) {
-                    return Err(anyhow!("Error during {mod_name} module validation. {:?} is not a valid file", cargo_toml_path));
+                    return Err(anyhow!(
+                        "Error during {mod_name} module validation. {:?} is not a valid file",
+                        cargo_toml_path
+                    ));
                 }
             }
             PackageManager::Npm => {
                 let cargo_toml_path = module_conf.path.join("package.json");
                 if !F::is_a_file(&cargo_toml_path) {
-                    return Err(anyhow!("Error during {mod_name} module validation. {:?} is not a valid file", cargo_toml_path));
+                    return Err(anyhow!(
+                        "Error during {mod_name} module validation. {:?} is not a valid file",
+                        cargo_toml_path
+                    ));
                 }
             }
             PackageManager::Maven => {
                 let cargo_toml_path = module_conf.path.join("pom.xml");
                 if !F::is_a_file(&cargo_toml_path) {
-                    return Err(anyhow!("Error during {mod_name} module validation. {:?} is not a valid file", cargo_toml_path));
+                    return Err(anyhow!(
+                        "Error during {mod_name} module validation. {:?} is not a valid file",
+                        cargo_toml_path
+                    ));
                 }
             }
         }
@@ -149,17 +161,22 @@ impl <F: FileSystem + 'static> PanProjectConfig<F> {
         if self.modules.is_empty() {
             Ok(None)
         } else if self.modules.len() == 1 {
-            let (name, conf) = self.modules.iter()
-                .next()
-                .expect("Module not found");
+            let (name, conf) = self.modules.iter().next().expect("Module not found");
 
             Ok(Some(PanModule::new(String::from(name), conf.clone())?))
         } else {
-            let main_modules = self.modules.iter().filter(|(_, m)| m.main).collect::<Vec<_>>();
+            let main_modules = self
+                .modules
+                .iter()
+                .filter(|(_, m)| m.main)
+                .collect::<Vec<_>>();
             if main_modules.is_empty() {
                 Err(anyhow!("No module marked as main"))
             } else if main_modules.len() > 1 {
-                Err(anyhow!("Only one module must be marked as main. found {}", main_modules.len()))
+                Err(anyhow!(
+                    "Only one module must be marked as main. found {}",
+                    main_modules.len()
+                ))
             } else {
                 let (name, conf) = main_modules.first().expect("Module not found");
                 Ok(Some(PanModule::new(String::from(*name), (*conf).clone())?))
@@ -168,9 +185,9 @@ impl <F: FileSystem + 'static> PanProjectConfig<F> {
     }
 
     pub fn modules(&self) -> anyhow::Result<Vec<PanModule<F>>> {
-        self.modules.iter()
+        self.modules
+            .iter()
             .map(|(name, conf)| PanModule::new(String::from(name), conf.clone()))
             .collect()
     }
 }
-
