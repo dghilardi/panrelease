@@ -38,6 +38,7 @@ pub struct GitConfig {
 impl Default for GitConfig {
     fn default() -> Self {
         Self {
+            force_sign: false,
             tag_template: default_tag_template(),
         }
     }
