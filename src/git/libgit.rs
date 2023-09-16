@@ -40,6 +40,10 @@ impl GitRepo {
     }
 
     pub fn update_and_commit(&self, version: semver::Version) -> anyhow::Result<()> {
+        if self.config.force_sign {
+            anyhow::bail!("Commit/tag sign is not supported in lib mode...");
+        }
+
         let mut index = self.repo.index()?;
         index.update_all(["*"].iter(), Some(&mut (|name, _content| {
             log::debug!("Adding {:?}", name);

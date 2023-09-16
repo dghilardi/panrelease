@@ -14,7 +14,7 @@ readme = "README.md"
 crate-type = ["cdylib", "rlib"]
 
 [features]
-default = ["console_error_panic_hook", "libgit"]
+default = ["console_error_panic_hook"]
 libgit = ["git2"]
 
 [dependencies]
