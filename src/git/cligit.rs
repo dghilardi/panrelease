@@ -1,7 +1,6 @@
 use crate::project::config::GitConfig;
 use crate::runner::CmdRunner;
 use crate::system::FileSystem;
-use crate::wasm_utils::log;
 use anyhow::anyhow;
 use std::path::{Path, PathBuf};
 
@@ -42,7 +41,6 @@ impl GitRepo {
             .filter(|head| !head.is_empty() && !(*head).starts_with("??"))
             .collect::<Vec<_>>();
 
-        log(&format!("Pending: {pending:?}"));
         Ok(pending.is_empty())
     }
 
