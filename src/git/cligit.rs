@@ -53,15 +53,15 @@ impl GitRepo {
         .run()?;
 
         let descr = version.to_string();
-        let commit_flags = if self.config.force_sign {
-            String::from("-Sm")
+        let commit_args = if self.config.force_sign {
+            vec! [String::from("commit"), String::from("-S"), String::from("-m"), descr]
         } else {
-            String::from("-m")
+            vec! [String::from("commit"), String::from("-m"), descr]
         };
 
         CmdRunner::build(
             "git",
-            &[String::from("commit"), commit_flags, descr],
+            &commit_args,
             &self.path,
         )?
         .run()?;
