@@ -4,7 +4,7 @@ version = "0.12.3"
 edition = "2021"
 authors = ["Davide Ghilardi <dghila@d71.dev>"]
 description = "Utility to release software"
-keywords = [ "cli", "tool", "git", "release" ]
+keywords = ["cli", "tool", "git", "release"]
 repository = "https://github.com/dghilardi/panrelease"
 license = "MIT"
 readme = "README.md"
@@ -19,7 +19,7 @@ libgit = ["git2"]
 
 [dependencies]
 log = "0.4.17"
-env_logger = "0.10.0"
+env_logger = "0.11.0"
 
 anyhow = "1.0.66"
 clap = { version = "4.0.29", features = ["derive"] }
@@ -27,16 +27,16 @@ exitcode = "1.1.2"
 
 update-informer = "1.0.0"
 
-git2 = { version = "0.18.0", optional = true }
+git2 = { version = "0.19.0", optional = true }
 semver = "1.0.18"
 chrono = "0.4.31"
 
-serde = {version = "1.0.149", features = ["derive"]}
+serde = { version = "1.0.149", features = ["derive"] }
 toml = "0.8.0"
 
 regex = "1.7.0"
 nom = "7.1.1"
-toml_edit = "0.20"
+toml_edit = "0.22"
 
 # WASM
 js-sys = "0.3.55"
@@ -54,4 +54,3 @@ wasm-bindgen-test = "0.3.13"
 [profile.release]
 # Tell `rustc` to optimize for small code size.
 opt-level = "s"
-
