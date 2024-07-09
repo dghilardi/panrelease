@@ -4,6 +4,7 @@ use std::path::PathBuf;
 use anyhow::bail;
 
 use crate::package::cargo::CargoPackage;
+use crate::package::gradle::GradlePackage;
 use crate::package::maven::MavenPackage;
 use crate::package::npm::NpmPackage;
 use crate::package::PanPackage;
@@ -18,19 +19,19 @@ pub struct PanModule<F> {
     filesystem: PhantomData<F>,
 }
 
-impl <F: FileSystem + 'static> PanModule<F> {
+impl<F: FileSystem + 'static> PanModule<F> {
     pub fn new(name: String, conf: ProjectModule) -> anyhow::Result<Self> {
         Ok(Self {
             name,
             package: Self::extract_package(&conf)?,
             conf,
-            filesystem: PhantomData
+            filesystem: PhantomData,
         })
     }
 
     pub fn detect(path: PathBuf) -> anyhow::Result<Option<Self>> {
         let Some(package_manager) = PackageManager::detect::<F>(&path) else {
-            return Ok(None)
+            return Ok(None);
         };
         let conf = ProjectModule {
             path,
@@ -43,7 +44,7 @@ impl <F: FileSystem + 'static> PanModule<F> {
             name: String::from("<detected>"),
             package: Self::extract_package(&conf)?,
             conf,
-            filesystem: PhantomData
+            filesystem: PhantomData,
         }))
     }
 
@@ -52,6 +53,7 @@ impl <F: FileSystem + 'static> PanModule<F> {
             PackageManager::Cargo => Box::new(CargoPackage::<F>::new(conf.path.clone())?),
             PackageManager::Npm => Box::new(NpmPackage::<F>::new(conf.path.clone())?),
             PackageManager::Maven => Box::new(MavenPackage::<F>::new(conf.path.clone())?),
+            PackageManager::Gradle => Box::new(GradlePackage::<F>::new(conf.path.clone())?),
         })
     }
 
@@ -80,4 +82,3 @@ impl <F: FileSystem + 'static> PanModule<F> {
         Ok(())
     }
 }
-

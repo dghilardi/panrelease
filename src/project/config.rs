@@ -74,6 +74,7 @@ pub enum PackageManager {
     Cargo,
     Npm,
     Maven,
+    Gradle,
 }
 
 impl PackageManager {
@@ -84,6 +85,8 @@ impl PackageManager {
             Some(Self::Maven)
         } else if F::is_a_file(&path.join("package.json")) {
             Some(Self::Npm)
+        } else if F::is_a_file(&path.join("gradle.properties")) {
+            Some(Self::Gradle)
         } else {
             None
         }
@@ -147,6 +150,15 @@ impl<F: FileSystem + 'static> PanProjectConfig<F> {
             }
             PackageManager::Maven => {
                 let cargo_toml_path = module_conf.path.join("pom.xml");
+                if !F::is_a_file(&cargo_toml_path) {
+                    return Err(anyhow!(
+                        "Error during {mod_name} module validation. {:?} is not a valid file",
+                        cargo_toml_path
+                    ));
+                }
+            }
+            PackageManager::Gradle => {
+                let cargo_toml_path = module_conf.path.join("gradle.properties");
                 if !F::is_a_file(&cargo_toml_path) {
                     return Err(anyhow!(
                         "Error during {mod_name} module validation. {:?} is not a valid file",
