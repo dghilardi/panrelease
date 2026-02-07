@@ -120,6 +120,7 @@ pub enum BumpLevel {
 }
 
 impl BumpLevel {
+    #[cfg(test)]
     fn apply(
         &self,
         current: semver::Version,
@@ -210,7 +211,6 @@ pub fn parse_build(build_info: &str) -> Option<(&str, Option<u64>)> {
 
 #[cfg(test)]
 mod test {
-    use semver::BuildMetadata;
     use crate::args::{BumpLevel, parse_build};
 
     #[test]

@@ -10,7 +10,7 @@ use crate::system::FileSystem;
 
 pub struct CargoPackage<F> {
     path: PathBuf,
-    doc: toml_edit::Document,
+    doc: toml_edit::DocumentMut,
     filesystem: PhantomData<F>,
 }
 
@@ -19,7 +19,7 @@ impl <F: FileSystem> CargoPackage<F> {
         let cargo_str = F::read_string(&path.join("Cargo.toml"))?;
         Ok(Self {
             path,
-            doc: cargo_str.parse::<toml_edit::Document>()?,
+            doc: cargo_str.parse::<toml_edit::DocumentMut>()?,
             filesystem: PhantomData,
         })
     }

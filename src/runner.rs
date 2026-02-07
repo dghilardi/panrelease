@@ -1,9 +1,16 @@
-use std::path::{Path, PathBuf};
-use std::process::{Command, ExitStatus, Output, Stdio};
+use std::path::Path;
+#[cfg(not(target_arch = "wasm32"))]
+use std::process::{Command, Stdio};
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
+
+#[cfg(target_arch = "wasm32")]
+use std::path::PathBuf;
+#[cfg(target_arch = "wasm32")]
+use anyhow::anyhow;
+#[cfg(target_arch = "wasm32")]
 use serde_json::json;
-use wasm_bindgen::JsValue;
+#[cfg(target_arch = "wasm32")]
 use crate::wasm_utils::exec;
 
 #[cfg(not(target_arch = "wasm32"))]

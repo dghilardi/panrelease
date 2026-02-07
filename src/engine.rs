@@ -1,8 +1,6 @@
 use std::ffi::OsString;
 use anyhow::{bail, Context};
-use clap::error::ErrorKind;
 use clap::Parser;
-use futures::executor::block_on;
 use crate::args::{Commands, PanReleaseArgs};
 use crate::conf::loader::ConfigLoader;
 use crate::system::FileSystem;

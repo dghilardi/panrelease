@@ -111,7 +111,7 @@ pub enum DtdDecl {
 }
 
 // document ::= ( prolog element misc*)
-fn document(input: &str) -> IResult<&str, XMLDocument> {
+fn document(input: &str) -> IResult<&str, XMLDocument<'_>> {
     map(tuple((opt(prolog), multispace0, element, opt(misc))), |(p, _, e, m)| {
         let pr = p.unwrap_or((None, vec![]));
 
@@ -125,7 +125,7 @@ fn document(input: &str) -> IResult<&str, XMLDocument> {
 }
 
 // prolog ::= XMLDecl misc* (doctypedecl Misc*)?
-fn prolog(input: &str) -> IResult<&str, (Option<XMLdecl>, Vec<XMLNode>)> {
+fn prolog(input: &str) -> IResult<&str, (Option<XMLdecl>, Vec<XMLNode<'_>>)> {
     map(tuple((opt(xmldecl), opt(doctypedecl))), |(x, dtd)| {
         (x, dtd.map_or(vec![], |d| d))
     })(input)
@@ -179,7 +179,7 @@ fn xmldecl(input: &str) -> IResult<&str, XMLdecl> {
     )(input)
 }
 
-fn doctypedecl(input: &str) -> IResult<&str, Vec<XMLNode>> {
+fn doctypedecl(input: &str) -> IResult<&str, Vec<XMLNode<'_>>> {
     map(
         tuple((
             tag("<!DOCTYPE"),
@@ -210,13 +210,13 @@ fn doctypedecl(input: &str) -> IResult<&str, Vec<XMLNode>> {
 // TODO: parameter entities
 // intSubset ::= (markupdecl | DeclSep)*
 // markupdecl ::= elementdecl | AttlistDecl | EntityDecl | NotationDecl | PI | Comment
-fn intsubset(input: &str) -> IResult<&str, Vec<XMLNode>> {
+fn intsubset(input: &str) -> IResult<&str, Vec<XMLNode<'_>>> {
     many0(alt((entitydecl, processing_instruction, comment)))(input)
 }
 
 // EntityDecl ::= GEDecl | PEDecl
 // TODO: support parameter entities
-fn entitydecl(input: &str) -> IResult<&str, XMLNode> {
+fn entitydecl(input: &str) -> IResult<&str, XMLNode<'_>> {
     // TODO: handle quotes properly
     map(
         tuple((
@@ -263,7 +263,7 @@ fn entityvalue_double(input: &str) -> IResult<&str, String> {
     )(input)
 }
 
-fn externalid(input: &str) -> IResult<&str, Vec<XMLNode>> {
+fn externalid(input: &str) -> IResult<&str, Vec<XMLNode<'_>>> {
     map(tag("not yet implemented"), |_| {
         vec![XMLNode::Text(Value::String(
             "external ID not yet implemented"
@@ -272,7 +272,7 @@ fn externalid(input: &str) -> IResult<&str, Vec<XMLNode>> {
 }
 
 // Element ::= EmptyElemTag | STag content ETag
-fn element(input: &str) -> IResult<&str, XMLNode> {
+fn element(input: &str) -> IResult<&str, XMLNode<'_>> {
     map(alt((emptyelem, taggedelem)), |e| {
         // TODO: Check for namespace declarations, and resolve URIs in the node tree under 'e'
         e
@@ -282,7 +282,7 @@ fn element(input: &str) -> IResult<&str, XMLNode> {
 // STag ::= '<' Name (Attribute)* '>'
 // ETag ::= '</' Name '>'
 // NB. Names must match
-fn taggedelem(input: &str) -> IResult<&str, XMLNode> {
+fn taggedelem(input: &str) -> IResult<&str, XMLNode<'_>> {
     map(
         tuple((
             tag("<"),
@@ -305,7 +305,7 @@ fn taggedelem(input: &str) -> IResult<&str, XMLNode> {
 }
 
 // EmptyElemTag ::= '<' Name (Attribute)* '/>'
-fn emptyelem(input: &str) -> IResult<&str, XMLNode> {
+fn emptyelem(input: &str) -> IResult<&str, XMLNode<'_>> {
     map(
         tuple((
             tag("<"),
@@ -318,7 +318,7 @@ fn emptyelem(input: &str) -> IResult<&str, XMLNode> {
     )(input)
 }
 
-fn attributes(input: &str) -> IResult<&str, Vec<XMLNode>> {
+fn attributes(input: &str) -> IResult<&str, Vec<XMLNode<'_>>> {
     //this is just a wrapper around the attribute function, that checks for duplicates.
     verify(many0(attribute), |v: &[XMLNode]| {
         let attrs = &v.iter().collect::<Vec<_>>();
@@ -335,7 +335,7 @@ fn attributes(input: &str) -> IResult<&str, Vec<XMLNode>> {
 }
 
 // Attribute ::= Name '=' AttValue
-fn attribute(input: &str) -> IResult<&str, XMLNode> {
+fn attribute(input: &str) -> IResult<&str, XMLNode<'_>> {
     map(
         tuple((
             multispace1,
@@ -369,7 +369,7 @@ fn parse_str<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str
 }
 
 // content ::= CharData? ((element | Reference | CDSect | PI | Comment) CharData?)*
-fn content(input: &str) -> IResult<&str, Vec<XMLNode>> {
+fn content(input: &str) -> IResult<&str, Vec<XMLNode<'_>>> {
     map(
         tuple((
             opt(chardata),
@@ -409,18 +409,18 @@ fn content(input: &str) -> IResult<&str, Vec<XMLNode>> {
 }
 
 // Reference ::= EntityRef | CharRef
-fn reference(input: &str) -> IResult<&str, XMLNode> {
+fn reference(input: &str) -> IResult<&str, XMLNode<'_>> {
     alt((entityref, charref))(input)
 }
-fn entityref(input: &str) -> IResult<&str, XMLNode> {
+fn entityref(input: &str) -> IResult<&str, XMLNode<'_>> {
     map(tuple((char('&'), qualname, char(';'))), |(_, n, _)| {
         XMLNode::Reference(n)
     })(input)
 }
-fn charref(input: &str) -> IResult<&str, XMLNode> {
+fn charref(input: &str) -> IResult<&str, XMLNode<'_>> {
     alt((charref_octal, charref_hex))(input)
 }
-fn charref_octal(input: &str) -> IResult<&str, XMLNode> {
+fn charref_octal(input: &str) -> IResult<&str, XMLNode<'_>> {
     map(
         tuple((char('&'), char('#'), digit1, char(';'))),
         |(_, _, n, _)| {
@@ -438,7 +438,7 @@ fn charref_octal(input: &str) -> IResult<&str, XMLNode> {
         },
     )(input)
 }
-fn charref_hex(input: &str) -> IResult<&str, XMLNode> {
+fn charref_hex(input: &str) -> IResult<&str, XMLNode<'_>> {
     map(
         tuple((char('&'), char('#'), char('x'), hex_digit1, char(';'))),
         |(_, _, _, n, _)| {
@@ -458,7 +458,7 @@ fn charref_hex(input: &str) -> IResult<&str, XMLNode> {
 }
 
 // PI ::= '<?' PITarget (char* - '?>') '?>'
-fn processing_instruction(input: &str) -> IResult<&str, XMLNode> {
+fn processing_instruction(input: &str) -> IResult<&str, XMLNode<'_>> {
     map(
         delimited(
             tag("<?"),
@@ -470,7 +470,7 @@ fn processing_instruction(input: &str) -> IResult<&str, XMLNode> {
 }
 
 // Comment ::= '<!--' (char* - '--') '-->'
-fn comment(input: &str) -> IResult<&str, XMLNode> {
+fn comment(input: &str) -> IResult<&str, XMLNode<'_>> {
     map(
         delimited(tag("<!--"), take_until("--"), tag("-->")),
         |v: &str| XMLNode::Comment(Value::String(v)),
@@ -478,7 +478,7 @@ fn comment(input: &str) -> IResult<&str, XMLNode> {
 }
 
 // Misc ::= Comment | PI | S
-fn misc(input: &str) -> IResult<&str, Vec<XMLNode>> {
+fn misc(input: &str) -> IResult<&str, Vec<XMLNode<'_>>> {
     map(tag("not yet implemented"), |_| {
         //vec![Node::new(NodeType::Comment).set_value("not yet implemented".to_string())]
         vec![]
@@ -486,18 +486,18 @@ fn misc(input: &str) -> IResult<&str, Vec<XMLNode>> {
 }
 
 // CharData ::= [^<&]* - (']]>')
-fn chardata(input: &str) -> IResult<&str, Vec<StringRepr>> {
+fn chardata(input: &str) -> IResult<&str, Vec<StringRepr<'_>>> {
     many1(alt((chardata_cdata, chardata_escapes, chardata_literal)))(input)
 }
 
-fn chardata_cdata(input: &str) -> IResult<&str, StringRepr> {
+fn chardata_cdata(input: &str) -> IResult<&str, StringRepr<'_>> {
     map(
         delimited(tag("<![CDATA["), take_until("]]>"), tag("]]>")),
         StringRepr::Str,
     )(input)
 }
 
-fn chardata_escapes(input: &str) -> IResult<&str, StringRepr> {
+fn chardata_escapes(input: &str) -> IResult<&str, StringRepr<'_>> {
     map(alt((
         chardata_unicode_codepoint,
         value(">".to_string(), tag("&gt;")),
@@ -527,7 +527,7 @@ fn chardata_unicode_codepoint(input: &str) -> IResult<&str, String> {
     )(input)
 }
 
-fn chardata_literal(input: &str) -> IResult<&str, StringRepr> {
+fn chardata_literal(input: &str) -> IResult<&str, StringRepr<'_>> {
     map(
         verify(take_while1(|c| c != '<' && c != '&'), |v: &str| {
             // chardata cannot contain ]]>

@@ -13,7 +13,7 @@ use crate::runner::CmdRunner;
 use crate::system::FileSystem;
 
 pub struct PanModule<F> {
-    name: String,
+    _name: String,
     conf: ProjectModule,
     package: Box<dyn PanPackage>,
     filesystem: PhantomData<F>,
@@ -22,7 +22,7 @@ pub struct PanModule<F> {
 impl<F: FileSystem + 'static> PanModule<F> {
     pub fn new(name: String, conf: ProjectModule) -> anyhow::Result<Self> {
         Ok(Self {
-            name,
+            _name: name,
             package: Self::extract_package(&conf)?,
             conf,
             filesystem: PhantomData,
@@ -41,7 +41,7 @@ impl<F: FileSystem + 'static> PanModule<F> {
         };
 
         Ok(Some(Self {
-            name: String::from("<detected>"),
+            _name: String::from("<detected>"),
             package: Self::extract_package(&conf)?,
             conf,
             filesystem: PhantomData,

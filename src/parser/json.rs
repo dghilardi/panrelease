@@ -109,7 +109,7 @@ fn string<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
 
 fn array<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
     i: &'a str,
-) -> IResult<&'a str, Vec<JsonValue>, E> {
+) -> IResult<&'a str, Vec<JsonValue<'a>>, E> {
     context(
         "array",
         preceded(
@@ -124,7 +124,7 @@ fn array<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
 
 fn key_value<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
     i: &'a str,
-) -> IResult<&'a str, (&'a str, JsonValue), E> {
+) -> IResult<&'a str, (&'a str, JsonValue<'a>), E> {
     separated_pair(
         preceded(space, string),
         cut(preceded(space, char(':'))),
@@ -134,7 +134,7 @@ fn key_value<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
 
 fn hash<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
     i: &'a str,
-) -> IResult<&'a str, HashMap<String, JsonValue>, E> {
+) -> IResult<&'a str, HashMap<String, JsonValue<'a>>, E> {
     context(
         "map",
         preceded(
@@ -157,7 +157,7 @@ fn hash<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
 
 fn json_value<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
     i: &'a str,
-) -> IResult<&'a str, JsonValue, E> {
+) -> IResult<&'a str, JsonValue<'a>, E> {
     preceded(
         space,
         alt((
@@ -173,7 +173,7 @@ fn json_value<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
 
 fn root<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
     i: &'a str,
-) -> IResult<&'a str, JsonValue, E> {
+) -> IResult<&'a str, JsonValue<'a>, E> {
     delimited(
         space,
         alt((

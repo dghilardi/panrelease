@@ -9,7 +9,8 @@ pub struct NodeJsSystem;
 
 impl EnvVars for NodeJsSystem {
     fn prefixed(prefix: &str) -> anyhow::Result<HashMap<String, String>> {
-        let full_env: HashMap<String, String> = wasm_utils::process::ENV.into_serde()?;
+        let full_env: HashMap<String, String> = serde_wasm_bindgen::from_value(wasm_utils::process::ENV.clone())
+            .map_err(|e| anyhow!("Error deserializing env: {e:?}"))?;
         let filtered_env = full_env.into_iter()
             .filter_map(|(key, value)|
                 key

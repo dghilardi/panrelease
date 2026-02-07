@@ -29,10 +29,10 @@ impl QualifiedName {
 impl Display for QualifiedName {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let mut result = String::new();
-        self.prefix.as_ref().map_or((), |p| {
+        if let Some(p) = self.prefix.as_ref() {
             result.push_str(p.as_str());
             result.push(':');
-        });
+        }
         result.push_str(self.localname.as_str());
         write!(f, "{}", result)
     }
