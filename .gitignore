@@ -1,4 +1,12 @@
+# Rust build artifacts
 /target
+
+# Build output
 /builds
 /dist
+
+# Wasm build artifacts (nodejs)
+/nodejs/pkg
+
+# IDE
 /.idea
