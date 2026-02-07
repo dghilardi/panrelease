@@ -4,15 +4,12 @@ on:
   push:
     tags: ["*.*.*"]
 
-permissions:
-  id-token: write
-  contents: read
-
 jobs:
   wasm-rel:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      id-token: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -35,6 +32,6 @@ jobs:
       - name: Yarn build
         working-directory: ./nodejs
         run: yarn --frozen-lockfile
-      - name: Yarn release
+      - name: Npm release
         working-directory: ./nodejs
-        run: yarn publish
+        run: npm publish
