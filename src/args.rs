@@ -39,9 +39,17 @@ impl TargetVersion {
         &self,
         current: semver::Version,
     ) -> semver::Version {
+        self.apply_with_slug(current, None)
+    }
+
+    pub fn apply_with_slug(
+        &self,
+        current: semver::Version,
+        slug: Option<&str>,
+    ) -> semver::Version {
         match self {
             TargetVersion::Relative(bump_level) => {
-                bump_level.apply(current)
+                bump_level.apply_with_slug(current, slug)
             }
             TargetVersion::Absolute(version) => {
                 version.to_owned()
@@ -116,6 +124,14 @@ impl BumpLevel {
         &self,
         current: semver::Version,
     ) -> semver::Version {
+        self.apply_with_slug(current, None)
+    }
+
+    pub(crate) fn apply_with_slug(
+        &self,
+        current: semver::Version,
+        slug: Option<&str>,
+    ) -> semver::Version {
         match self {
             BumpLevel::Major => {
                 semver::Version {
@@ -145,11 +161,28 @@ impl BumpLevel {
                 }
             }
             BumpLevel::Post => {
-                let build = parse_build(current.build.as_str()).map(|(name, ver)| {
-                    BuildMetadata::new(&format!("{}.r{}", name, ver.map(|v| v + 1).unwrap_or(1)))
-                })
-                    .unwrap_or_else(|| BuildMetadata::new("dev.r1"))
-                    .expect("Error constructing post-release slug");
+                let build = if let Some(slug) = slug {
+                    // Slug-aware mode: use slug as the build name
+                    let existing = parse_build(current.build.as_str());
+                    match existing {
+                        Some((name, Some(ver))) if name == slug => {
+                            // Same slug, increment counter
+                            BuildMetadata::new(&format!("{slug}.r{}", ver + 1))
+                        }
+                        _ => {
+                            // Different slug or no existing metadata: start at r1
+                            BuildMetadata::new(&format!("{slug}.r1"))
+                        }
+                    }
+                    .expect("Error constructing post-release slug")
+                } else {
+                    // Original behavior
+                    parse_build(current.build.as_str()).map(|(name, ver)| {
+                        BuildMetadata::new(&format!("{}.r{}", name, ver.map(|v| v + 1).unwrap_or(1)))
+                    })
+                        .unwrap_or_else(|| BuildMetadata::new("dev.r1"))
+                        .expect("Error constructing post-release slug")
+                };
 
                 semver::Version {
                     major: current.major,
@@ -163,7 +196,7 @@ impl BumpLevel {
     }
 }
 
-fn parse_build(build_info: &str) -> Option<(&str, Option<u64>)> {
+pub fn parse_build(build_info: &str) -> Option<(&str, Option<u64>)> {
     let re = Regex::new(r"(?P<name>[0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*)(\.r(?P<ver>\d+))$").unwrap();
     re.captures(build_info)
         .and_then(|captures| {
@@ -229,6 +262,61 @@ mod test {
         assert_eq!(
             String::from("1.2.3+feat.r2"),
             BumpLevel::Post.apply(semver::Version::parse("1.2.3+feat.r1").unwrap()).to_string()
+        )
+    }
+
+    #[test]
+    fn apply_with_slug_first_post() {
+        assert_eq!(
+            String::from("1.2.3+my-feature.r1"),
+            BumpLevel::Post.apply_with_slug(
+                semver::Version::parse("1.2.3").unwrap(),
+                Some("my-feature"),
+            ).to_string()
+        )
+    }
+
+    #[test]
+    fn apply_with_slug_increment() {
+        assert_eq!(
+            String::from("1.2.3+my-feature.r2"),
+            BumpLevel::Post.apply_with_slug(
+                semver::Version::parse("1.2.3+my-feature.r1").unwrap(),
+                Some("my-feature"),
+            ).to_string()
+        )
+    }
+
+    #[test]
+    fn apply_with_slug_different_slug_resets() {
+        assert_eq!(
+            String::from("1.2.3+new-slug.r1"),
+            BumpLevel::Post.apply_with_slug(
+                semver::Version::parse("1.2.3+old-slug.r5").unwrap(),
+                Some("new-slug"),
+            ).to_string()
+        )
+    }
+
+    #[test]
+    fn apply_with_slug_none_preserves_original() {
+        assert_eq!(
+            String::from("1.2.3+feat.r2"),
+            BumpLevel::Post.apply_with_slug(
+                semver::Version::parse("1.2.3+feat.r1").unwrap(),
+                None,
+            ).to_string()
+        )
+    }
+
+    #[test]
+    fn apply_with_slug_none_defaults_to_dev() {
+        assert_eq!(
+            String::from("1.2.3+dev.r1"),
+            BumpLevel::Post.apply_with_slug(
+                semver::Version::parse("1.2.3").unwrap(),
+                None,
+            ).to_string()
         )
     }
 }

@@ -28,13 +28,48 @@ impl GitRepo {
         }
     }
 
-    pub fn current_branch(&self) -> anyhow::Result<String> {
+    pub fn current_branch(&self) -> anyhow::Result<Option<String>> {
         let mut runner = CmdRunner::build(
             "git",
-            &[String::from("branch"), String::from("--porcelain=v1")],
+            &[String::from("rev-parse"), String::from("--abbrev-ref"), String::from("HEAD")],
             &self.path,
         )?;
         let out = runner.output().and_then(|b| Ok(String::from_utf8(b)?))?;
+        let branch = out.trim().to_string();
+        if branch == "HEAD" {
+            Ok(None)
+        } else {
+            Ok(Some(branch))
+        }
+    }
+
+    pub fn merge_base(&self, mainline: &str) -> anyhow::Result<String> {
+        let mut runner = CmdRunner::build(
+            "git",
+            &[String::from("merge-base"), String::from("HEAD"), String::from(mainline)],
+            &self.path,
+        )?;
+        let out = runner.output().and_then(|b| Ok(String::from_utf8(b)?))?;
+        Ok(out.trim().to_string())
+    }
+
+    pub fn latest_version_tag(&self, commit: &str) -> anyhow::Result<Option<String>> {
+        let mut runner = CmdRunner::build(
+            "git",
+            &[String::from("describe"), String::from("--tags"), String::from("--abbrev=0"), String::from(commit)],
+            &self.path,
+        )?;
+        match runner.output() {
+            Ok(b) => {
+                let tag = String::from_utf8(b)?.trim().to_string();
+                if tag.is_empty() {
+                    Ok(None)
+                } else {
+                    Ok(Some(tag))
+                }
+            }
+            Err(_) => Ok(None),
+        }
     }
 
     pub fn is_staging_clean(&self) -> anyhow::Result<bool> {

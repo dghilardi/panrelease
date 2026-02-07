@@ -1,6 +1,6 @@
 use std::path::Path;
 use anyhow::anyhow;
-use git2::{Repository, RepositoryOpenFlags, StatusOptions};
+use git2::{DescribeFormatOptions, DescribeOptions, Repository, RepositoryOpenFlags, StatusOptions};
 use crate::project::config::GitConfig;
 use crate::system::FileSystem;
 
@@ -26,6 +26,45 @@ impl GitRepo {
                 current = current.parent()
                     .ok_or(anyhow!("Could not find repo dir"))?;
             }
+        }
+    }
+
+    pub fn current_branch(&self) -> anyhow::Result<Option<String>> {
+        if self.repo.head_detached()? {
+            return Ok(None);
+        }
+        let head = self.repo.head()?;
+        Ok(head.shorthand().map(String::from))
+    }
+
+    pub fn merge_base(&self, mainline: &str) -> anyhow::Result<String> {
+        let head_oid = self.repo.head()?.peel_to_commit()?.id();
+        let main_ref = self.repo.revparse_single(mainline)?;
+        let main_oid = main_ref.peel_to_commit()?.id();
+        let base = self.repo.merge_base(head_oid, main_oid)?;
+        Ok(base.to_string())
+    }
+
+    pub fn latest_version_tag(&self, commit: &str) -> anyhow::Result<Option<String>> {
+        let oid = git2::Oid::from_str(commit)?;
+        let commit_obj = self.repo.find_object(oid, None)?;
+
+        let mut describe_opts = DescribeOptions::new();
+        describe_opts.describe_tags();
+
+        let describe_result = commit_obj.describe(&describe_opts);
+        match describe_result {
+            Ok(desc) => {
+                let mut fmt_opts = DescribeFormatOptions::new();
+                fmt_opts.abbreviated_size(0);
+                let tag = desc.format(Some(&fmt_opts))?;
+                if tag.is_empty() {
+                    Ok(None)
+                } else {
+                    Ok(Some(tag))
+                }
+            }
+            Err(_) => Ok(None),
         }
     }
 

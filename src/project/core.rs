@@ -8,6 +8,7 @@ use crate::args::RelArgs;
 use crate::git::GitRepo;
 use crate::project::config::{PanProjectConfig, VcsConfig};
 use crate::project::module::PanModule;
+use crate::project::strict;
 use crate::system::FileSystem;
 
 const UNRELEASED_LINE: &str = "\n## [Unreleased]";
@@ -40,7 +41,62 @@ impl <F: FileSystem + 'static> PanProject<F> {
         if !self.repo.is_staging_clean()? {
             return Err(anyhow!("Repository status is not clean"));
         }
-        let new_version = rel_args.level_or_version.apply(self.extract_master()?.extract_version()?);
+
+        let current_version = self.extract_master()?.extract_version()?;
+
+        let strict_conf = match self.conf.vcs() {
+            VcsConfig::Git(git_conf) => git_conf.strict.as_ref(),
+        };
+
+        let slug: Option<String> = if let Some(strict) = strict_conf {
+            let branch = self.repo.current_branch()?
+                .ok_or_else(|| anyhow!("Strict mode: cannot release from detached HEAD"))?;
+
+            let branch_kind = strict::classify_branch(&branch, &strict.mainline)?;
+
+            let base_version = match &branch_kind {
+                strict::BranchKind::Mainline => None,
+                _ => {
+                    let tag_template = match self.conf.vcs() {
+                        VcsConfig::Git(gc) => &gc.tag_template,
+                    };
+                    let merge_base_commit = self.repo.merge_base(&strict.mainline)?;
+                    let tag = self.repo.latest_version_tag(&merge_base_commit)?
+                        .ok_or_else(|| anyhow!(
+                            "Strict mode: no version tag found reachable from \
+                             merge-base with '{}'", strict.mainline
+                        ))?;
+                    let ver = strict::version_from_tag(&tag, tag_template)
+                        .ok_or_else(|| anyhow!(
+                            "Strict mode: could not parse version from tag '{tag}'"
+                        ))?;
+                    Some(ver)
+                }
+            };
+
+            let inferred_slug = match &branch_kind {
+                strict::BranchKind::Feature { slug } => Some(slug.as_str()),
+                strict::BranchKind::Hotfix { slug } => Some(slug.as_str()),
+                strict::BranchKind::Mainline => None,
+            };
+
+            let new_version = rel_args.level_or_version
+                .apply_with_slug(current_version.clone(), inferred_slug);
+
+            strict::validate_release(
+                &branch_kind,
+                &new_version,
+                base_version.as_ref(),
+            )?;
+
+            inferred_slug.map(String::from)
+        } else {
+            None
+        };
+
+        let new_version = rel_args.level_or_version
+            .apply_with_slug(current_version, slug.as_deref());
+
         for mut module in self.extract_modules()? {
             module.set_version(&new_version)?;
             module.persist()?;

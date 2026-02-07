@@ -33,6 +33,8 @@ pub struct GitConfig {
     pub force_sign: bool,
     #[serde(default = "default_tag_template")]
     pub tag_template: String,
+    #[serde(default)]
+    pub strict: Option<StrictConfig>,
 }
 
 impl Default for GitConfig {
@@ -40,8 +42,14 @@ impl Default for GitConfig {
         Self {
             force_sign: false,
             tag_template: default_tag_template(),
+            strict: None,
         }
     }
+}
+
+#[derive(Deserialize, Clone, Debug)]
+pub struct StrictConfig {
+    pub mainline: String,
 }
 
 fn default_tag_template() -> String {

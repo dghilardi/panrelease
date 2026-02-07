@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Strict mode: opt-in branch-aware release validation via `[vcs.strict]` config
+- Automatic slug inference from branch name for post-releases (replaces `dev` default)
+- Branch classification: mainline, feature (`feat/`, `feature/`), hotfix (`hotfix/`, `fix/`)
+- Base version validation against merge-base with mainline
+- `current_branch()`, `merge_base()`, and `latest_version_tag()` methods on both git backends
+
+### Fixed
+- `current_branch()` in CLI git backend (was broken/incomplete)
+
 ## [0.12.4] 2024-07-09
 ### Added
 - Support for gradle.properties
