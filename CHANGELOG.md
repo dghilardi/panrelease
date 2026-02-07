@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.13.3] 2026-02-07
+
 ### Fixed
 - Update `wasm-bindgen-cli` version to 0.2.92 to match `wasm-bindgen` dependency
 
