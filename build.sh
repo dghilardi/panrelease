@@ -3,7 +3,7 @@ WASMBINDGEN_VERSION=0.2.85
 OUT=./nodejs/pkg
 
 echo "Running cargo build"
-cargo build --release --target wasm32-unknown-unknown --no-default-features --features console_error_panic_hook
+cargo build --lib --release --target wasm32-unknown-unknown --no-default-features --features console_error_panic_hook
 
 if [ -d $OUT ]; then
   echo "Clearing output directory '$OUT'"
