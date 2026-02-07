@@ -28,6 +28,15 @@ impl GitRepo {
         }
     }
 
+    pub fn current_branch(&self) -> anyhow::Result<String> {
+        let mut runner = CmdRunner::build(
+            "git",
+            &[String::from("branch"), String::from("--porcelain=v1")],
+            &self.path,
+        )?;
+        let out = runner.output().and_then(|b| Ok(String::from_utf8(b)?))?;
+    }
+
     pub fn is_staging_clean(&self) -> anyhow::Result<bool> {
         let mut runner = CmdRunner::build(
             "git",
