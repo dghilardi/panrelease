@@ -1,5 +1,5 @@
 #!/bin/bash -e
-WASMBINDGEN_VERSION=0.2.85
+WASMBINDGEN_VERSION=0.2.92
 OUT=./nodejs/pkg
 
 echo "Running cargo build"
@@ -12,7 +12,7 @@ fi
 
 if ! [ -x "$(command -v wasm-bindgen)" ]; then
   echo "Installing wasm-bindgen-cli via cargo"
-  cargo install wasm-bindgen-cli --version 0.2.85
+  cargo install wasm-bindgen-cli --version $WASMBINDGEN_VERSION
 fi
 
 echo "Generating wasm-bindings"
