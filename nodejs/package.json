@@ -2,13 +2,21 @@
   "name": "panrelease",
   "version": "0.13.3",
   "description": "Utility to release software",
-  "keywords": [ "cli", "tool", "git", "release" ],
+  "keywords": [
+    "cli",
+    "tool",
+    "git",
+    "release"
+  ],
   "homepage": "https://github.com/dghilardi/panrelease",
   "repository": {
     "type": "git",
     "url": "https://github.com/dghilardi/panrelease.git"
   },
   "author": "Davide Ghilardi <dghila@d71.dev>",
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org"
+  },
   "main": "index.js",
   "license": "MIT",
   "bin": {
