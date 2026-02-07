@@ -2,7 +2,7 @@ name: npm-release
 
 on:
   push:
-    tags: ['*.*.*']
+    tags: ["*.*.*"]
 
 jobs:
   wasm-rel:
@@ -10,31 +10,29 @@ jobs:
     permissions:
       contents: write
     steps:
-    - name: Checkout
-      uses: actions/checkout@v1
+      - name: Checkout
+        uses: actions/checkout@v4
 
-    - name: Run tests
-      run: cargo test --verbose
+      - name: Run tests
+        run: cargo test --verbose
 
-    - name: Install dependencies
-      run: |
-        rustup target add wasm32-unknown-unknown
-        mkdir dist
-        mkdir builds
-    - name: Build WASM32
-      run: ./build.sh
-    - name: Node setup
-      uses: actions/setup-node@v2
-      with:
-        node-version: '12.x'
-        registry-url: 'https://registry.npmjs.org'
-        # Defaults to the user or organization that owns the workflow file
-        scope: '@octocat'
-    - name: Yarn build
-      working-directory: ./nodejs
-      run: yarn --frozen-lockfile
-    - name: Yarn release
-      working-directory: ./nodejs
-      run: yarn publish
-      env:
-        NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Install dependencies
+        run: |
+          rustup target add wasm32-unknown-unknown
+          mkdir dist
+          mkdir builds
+      - name: Build WASM32
+        run: ./build.sh
+      - name: Node setup
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20.x"
+          registry-url: "https://registry.npmjs.org"
+      - name: Yarn build
+        working-directory: ./nodejs
+        run: yarn --frozen-lockfile
+      - name: Yarn release
+        working-directory: ./nodejs
+        run: yarn publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
