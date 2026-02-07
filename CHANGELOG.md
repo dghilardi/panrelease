@@ -7,14 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Update `wasm-bindgen-cli` version to 0.2.92 to match `wasm-bindgen` dependency
+
 ## [0.13.2] 2026-02-07
+
+### Fixed
+- Make `update-informer` an optional dependency to prevent `rustls`/`ring` from being compiled for wasm32-unknown-unknown
 
 ## [0.13.1] 2026-02-07
 
 ### Fixed
 - Fix WASM build: add `getrandom` js feature for wasm32-unknown-unknown support
 - Fix WASM build: pass `--lib` to cargo build to avoid output filename collision between bin and lib targets
-- Make `update-informer` an optional dependency to prevent `rustls`/`ring` from being compiled for wasm32-unknown-unknown
 
 ## [0.13.0] 2026-02-07
 
