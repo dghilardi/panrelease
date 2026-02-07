@@ -28,6 +28,7 @@
 - [Package Manager Support](#package-manager-support)
 - [Multi-Module Projects](#multi-module-projects)
 - [Hooks](#hooks)
+- [Strict Mode](#strict-mode)
 - [Git Integration](#git-integration)
 - [Documentation](#documentation)
 - [Contributing](#contributing)
@@ -125,6 +126,7 @@ main = true                     # Designates primary module for version detectio
 | `vcs` | `software` | string | Version control system (`Git`) |
 | `vcs` | `force_sign` | bool | Require GPG-signed commits (default: `false`) |
 | `vcs` | `tag_template` | string | Git tag template (default: `{{version}}`) |
+| `vcs.strict` | `mainline` | string | Mainline branch name for [strict mode](#strict-mode) validation |
 | `modules.<name>` | `path` | string | Path to module relative to project root |
 | `modules.<name>` | `packageManager` | string | Package manager: `Cargo`, `Npm`, `Maven`, `Gradle` |
 | `modules.<name>` | `main` | bool | Mark as primary module for version extraction |
@@ -270,6 +272,82 @@ publish = ["cargo", "publish"]
 ```
 
 Hooks are executed in the order they are defined.
+
+## Strict Mode
+
+Strict mode is an opt-in feature that enforces branch-aware release validation. When enabled, Panrelease checks which branch you are on, restricts what kind of release is allowed, and automatically infers the build metadata slug from the branch name.
+
+### Enabling Strict Mode
+
+Add a `[vcs.strict]` section to your `.panproject.toml`:
+
+```toml
+[vcs]
+software = "Git"
+
+[vcs.strict]
+mainline = "main"   # your mainline branch name (e.g., "main", "master")
+```
+
+### Branch Classification
+
+Strict mode classifies the current branch into one of three kinds:
+
+| Branch Pattern | Kind | Example |
+|----------------|------|---------|
+| Matches `mainline` exactly | Mainline | `main` |
+| `feat/*` or `feature/*` | Feature | `feat/user-registration` |
+| `hotfix/*` or `fix/*` | Hotfix | `fix/timeout-error` |
+
+Any other branch name is rejected with an error.
+
+### Release Rules
+
+Strict mode enforces different rules depending on the branch kind:
+
+**Mainline branches** can only produce clean releases (major, minor, patch). Post-releases are not allowed from mainline.
+
+```bash
+# On main branch:
+panrelease patch   # OK  -> 1.2.4
+panrelease minor   # OK  -> 1.3.0
+panrelease post    # ERROR: cannot release a post-version from mainline
+```
+
+**Feature and hotfix branches** can only produce post-releases. The build metadata slug is automatically derived from the branch name.
+
+```bash
+# On feat/user-registration:
+panrelease post    # OK  -> 1.2.3+user-registration.r1
+panrelease patch   # ERROR: feature branches can only produce post-releases
+```
+
+### Slug Inference
+
+The branch name after the prefix is sanitized into a slug used as build metadata:
+
+- Non-alphanumeric characters are replaced with hyphens
+- Consecutive hyphens are collapsed
+- Leading/trailing hyphens are removed
+- Hotfix branches get a `fix-` prefix in the slug
+
+| Branch | Inferred Slug |
+|--------|--------------|
+| `feat/user-registration` | `user-registration` |
+| `feature/hello@.-world` | `hello-world` |
+| `hotfix/npe-fix` | `fix-npe-fix` |
+| `fix/timeout` | `fix-timeout` |
+
+### Additional Validations
+
+When releasing from a feature or hotfix branch, strict mode also verifies:
+
+- The version base (major.minor.patch) matches the latest tagged version reachable from the merge-base with mainline
+- The mainline version at the branch point is a clean version (not a post-release)
+- The build metadata slug matches the expected slug for the current branch
+- Releases from detached HEAD are not allowed
+
+If any check fails, Panrelease prints a descriptive error message with a suggested fix (e.g., rebase to latest mainline).
 
 ## Git Integration
 
