@@ -13,7 +13,7 @@ fn main() {
         .expect("Error executing engine");
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(feature = "update-informer")]
 fn check_version() {
     use update_informer::Check;
     use update_informer::registry::Crates;
@@ -25,3 +25,6 @@ fn check_version() {
         println!("New version is available: {}", version);
     }
 }
+
+#[cfg(not(feature = "update-informer"))]
+fn check_version() {}
