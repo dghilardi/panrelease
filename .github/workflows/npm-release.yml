@@ -4,6 +4,10 @@ on:
   push:
     tags: ["*.*.*"]
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   wasm-rel:
     runs-on: ubuntu-latest
@@ -34,5 +38,3 @@ jobs:
       - name: Yarn release
         working-directory: ./nodejs
         run: yarn publish
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
