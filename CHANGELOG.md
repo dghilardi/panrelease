@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.14.0] 2026-02-08
+
 ### Added
 - Auto-populate changelog from commit messages with configurable commit format parsing
 - Support for Conventional Commits and Gitmoji commit message formats
