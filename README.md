@@ -13,6 +13,7 @@
 - **Multi-Language Support** - Unified version management for Cargo, npm, Maven, and Gradle projects
 - **Semantic Versioning** - Automatic major, minor, patch, and post-release version bumping
 - **Changelog Automation** - Automatically updates CHANGELOG.md following [Keep a Changelog](https://keepachangelog.com/) format
+- **Changelog from Commits** - Auto-populate changelog sections from commit messages (Conventional Commits, Gitmoji)
 - **Git Integration** - Commits version changes, creates tags, and supports GPG signing
 - **Multi-Module Projects** - Manages monorepos with multiple packages
 - **Custom Hooks** - Execute arbitrary commands after releases (build, test, deploy)
@@ -28,6 +29,7 @@
 - [Package Manager Support](#package-manager-support)
 - [Multi-Module Projects](#multi-module-projects)
 - [Hooks](#hooks)
+- [Changelog from Commits](#changelog-from-commits)
 - [Strict Mode](#strict-mode)
 - [Git Integration](#git-integration)
 - [Documentation](#documentation)
@@ -130,6 +132,10 @@ main = true                     # Designates primary module for version detectio
 | `modules.<name>` | `path` | string | Path to module relative to project root |
 | `modules.<name>` | `packageManager` | string | Package manager: `Cargo`, `Npm`, `Maven`, `Gradle` |
 | `modules.<name>` | `main` | bool | Mark as primary module for version extraction |
+| `changelog` | `from_commits` | bool | Enable changelog population from commit messages (default: `false`) |
+| `changelog` | `commit_format` | string | Commit format: `auto`, `conventional`, `gitmoji` (default: `auto`) |
+| `changelog` | `include_scope` | bool | Include scope in changelog entries (default: `true`) |
+| `changelog` | `include_unmatched` | bool | Include non-matching commits in "Other" section (default: `false`) |
 
 For detailed configuration options, see [docs/CONFIGURATION.md](docs/CONFIGURATION.md).
 
@@ -272,6 +278,93 @@ publish = ["cargo", "publish"]
 ```
 
 Hooks are executed in the order they are defined.
+
+## Changelog from Commits
+
+Panrelease can automatically populate your CHANGELOG.md with entries derived from commit messages. When enabled, it reads commits since the last version tag, parses them according to a configurable commit format, and maps them into [Keep a Changelog](https://keepachangelog.com/) sections.
+
+### Enabling Changelog from Commits
+
+Add a `[changelog]` section to your `.panproject.toml`:
+
+```toml
+[changelog]
+from_commits = true
+commit_format = "auto"       # "auto" | "conventional" | "gitmoji"
+include_scope = true         # include scope in entries (default: true)
+include_unmatched = false    # add non-matching commits to "Other" section (default: false)
+```
+
+### Supported Commit Formats
+
+#### Conventional Commits
+
+Follows the [Conventional Commits](https://www.conventionalcommits.org/) specification: `type(scope): description`
+
+| Commit Type | Changelog Section |
+|-------------|-------------------|
+| `feat` | Added |
+| `fix` | Fixed |
+| `refactor`, `perf` | Changed |
+| `deprecate` | Deprecated |
+| `security` | Security |
+| `docs`, `chore`, `ci`, `build`, `style`, `test` | *Ignored* |
+
+Breaking changes (indicated by `!` after the type or `BREAKING CHANGE:` in the body) are placed in the **Changed** section with a `[BREAKING]` prefix.
+
+```
+feat(auth): add OAuth2 support       -> ### Added  - (auth) Add OAuth2 support
+fix: resolve timeout error           -> ### Fixed  - Resolve timeout error
+feat!: remove legacy API             -> ### Changed - [BREAKING] Remove legacy API
+```
+
+#### Gitmoji
+
+Supports [Gitmoji](https://gitmoji.dev/) shortcodes and unicode emoji: `:emoji: description`
+
+| Emoji | Changelog Section |
+|-------|-------------------|
+| `:sparkles:` | Added |
+| `:bug:` | Fixed |
+| `:recycle:`, `:zap:` | Changed |
+| `:wastebasket:` | Deprecated |
+| `:fire:` | Removed |
+| `:lock:` | Security |
+| `:boom:` | Changed (breaking) |
+| `:memo:`, `:wrench:`, `:construction_worker:`, `:green_heart:`, `:white_check_mark:`, `:pencil2:` | *Ignored* |
+
+#### Auto Mode (Default)
+
+When `commit_format = "auto"`, Panrelease analyzes all commits since the last tag and selects the single format (Conventional Commits or Gitmoji) that matches the most commits. On a tie, Conventional Commits wins. This ensures consistent formatting within a single release.
+
+### Smart Merging
+
+If the `## [Unreleased]` section already contains manually written entries, Panrelease preserves them and only adds new entries from commits that are not already represented. It uses `git blame` to determine which commit introduced each existing entry, preventing duplicates. New entries are interleaved with existing ones by commit date, with the most recent entries appearing first.
+
+### Examples
+
+Given these commits since the last tag:
+
+```
+feat(auth): add OAuth2 support
+fix: resolve crash on empty input
+docs: update API reference
+chore: update dependencies
+```
+
+Panrelease generates:
+
+```markdown
+## [Unreleased]
+
+### Added
+- (auth) Add OAuth2 support
+
+### Fixed
+- Resolve crash on empty input
+```
+
+The `docs` and `chore` commits are ignored as they are not relevant for a user-facing changelog.
 
 ## Strict Mode
 

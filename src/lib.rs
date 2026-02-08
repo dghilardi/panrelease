@@ -8,6 +8,7 @@ mod runner;
 mod parser;
 mod utils;
 mod git;
+mod changelog;
 pub mod conf;
 
 use anyhow::Context;

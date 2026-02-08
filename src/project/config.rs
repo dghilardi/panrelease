@@ -12,6 +12,8 @@ use crate::system::FileSystem;
 pub struct PanProjectConfig<F> {
     #[serde(default = "default_vcs_config")]
     vcs: VcsConfig,
+    #[serde(default)]
+    changelog: ChangelogConfig,
     modules: HashMap<String, ProjectModule>,
     #[serde(skip_deserializing, skip_serializing)]
     filesystem: PhantomData<F>,
@@ -50,6 +52,31 @@ impl Default for GitConfig {
 #[derive(Deserialize, Clone, Debug)]
 pub struct StrictConfig {
     pub mainline: String,
+}
+
+#[derive(Deserialize, Clone, Debug, Default)]
+pub struct ChangelogConfig {
+    #[serde(default)]
+    pub from_commits: bool,
+    #[serde(default)]
+    pub commit_format: CommitFormatKind,
+    #[serde(default = "default_true")]
+    pub include_scope: bool,
+    #[serde(default)]
+    pub include_unmatched: bool,
+}
+
+#[derive(Deserialize, Clone, Debug, Default, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum CommitFormatKind {
+    #[default]
+    Auto,
+    Conventional,
+    Gitmoji,
+}
+
+fn default_true() -> bool {
+    true
 }
 
 fn default_tag_template() -> String {
@@ -105,6 +132,7 @@ impl<P> Default for PanProjectConfig<P> {
     fn default() -> Self {
         Self {
             vcs: default_vcs_config(),
+            changelog: ChangelogConfig::default(),
             modules: Default::default(),
             filesystem: PhantomData,
         }
@@ -134,6 +162,10 @@ impl<F: FileSystem + 'static> PanProjectConfig<F> {
 
     pub fn vcs(&self) -> &VcsConfig {
         &self.vcs
+    }
+
+    pub fn changelog(&self) -> &ChangelogConfig {
+        &self.changelog
     }
 
     fn validate_module(mod_name: &str, module_conf: &ProjectModule) -> anyhow::Result<()> {

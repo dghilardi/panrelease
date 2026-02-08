@@ -5,6 +5,7 @@ use chrono::Utc;
 use regex::Regex;
 
 use crate::args::RelArgs;
+use crate::changelog;
 use crate::git::GitRepo;
 use crate::project::config::{PanProjectConfig, VcsConfig};
 use crate::project::module::PanModule;
@@ -12,6 +13,63 @@ use crate::project::strict;
 use crate::system::FileSystem;
 
 const UNRELEASED_LINE: &str = "\n## [Unreleased]";
+const UNRELEASED_HEADING: &str = "## [Unreleased]";
+
+/// Extract the text between `## [Unreleased]` and the next `## [` heading.
+/// Returns the extracted text and the 1-indexed line number where it starts.
+fn extract_unreleased_section(content: &str) -> (String, usize) {
+    let lines: Vec<&str> = content.lines().collect();
+
+    let unreleased_idx = lines.iter().position(|l| l.trim() == UNRELEASED_HEADING);
+    let start = match unreleased_idx {
+        Some(idx) => idx + 1,
+        None => return (String::new(), 1),
+    };
+
+    let end = lines[start..]
+        .iter()
+        .position(|l| {
+            let trimmed = l.trim();
+            trimmed.starts_with("## [") && trimmed != UNRELEASED_HEADING
+        })
+        .map(|pos| start + pos)
+        .unwrap_or(lines.len());
+
+    let section_text = lines[start..end].join("\n");
+    // Line numbers are 1-indexed
+    (section_text, start + 1)
+}
+
+/// Replace the content between `## [Unreleased]` and the next version heading
+/// with the new populated content.
+fn replace_unreleased_content(content: &str, new_content: &str) -> String {
+    let lines: Vec<&str> = content.lines().collect();
+
+    let unreleased_idx = match lines.iter().position(|l| l.trim() == UNRELEASED_HEADING) {
+        Some(idx) => idx,
+        None => return content.to_string(),
+    };
+
+    let start = unreleased_idx + 1;
+
+    let end = lines[start..]
+        .iter()
+        .position(|l| {
+            let trimmed = l.trim();
+            trimmed.starts_with("## [") && trimmed != UNRELEASED_HEADING
+        })
+        .map(|pos| start + pos)
+        .unwrap_or(lines.len());
+
+    let mut result = lines[..=unreleased_idx].join("\n");
+    result.push_str(new_content);
+    if end < lines.len() {
+        result.push('\n');
+        result.push_str(&lines[end..].join("\n"));
+    }
+
+    result
+}
 
 pub struct PanProject<F> {
     path: PathBuf,
@@ -120,6 +178,32 @@ impl <F: FileSystem + 'static> PanProject<F> {
                     .expect("Invalid regex")
                     .replace(&changelog_content, UNRELEASED_LINE)
                     .to_string();
+            }
+
+            // Populate changelog from commits if enabled
+            let changelog_conf = self.conf.changelog();
+            if changelog_conf.from_commits {
+                if let Ok(Some(prev_tag)) = self.repo.latest_version_tag("HEAD") {
+                    if let Ok(commits) = self.repo.commits_since_tag(&prev_tag) {
+                        let blame_lines = self.repo.blame_file(&changelog_path).unwrap_or_default();
+
+                        let (unreleased_text, start_line) =
+                            extract_unreleased_section(&changelog_content);
+
+                        let populated = changelog::populate_changelog(
+                            &unreleased_text,
+                            start_line,
+                            &commits,
+                            &blame_lines,
+                            changelog_conf,
+                        );
+
+                        if !populated.is_empty() {
+                            changelog_content =
+                                replace_unreleased_content(&changelog_content, &populated);
+                        }
+                    }
+                }
             }
 
             let updated_changelog = changelog_content.replace(UNRELEASED_LINE, &format!("{UNRELEASED_LINE}\n\n## [{version}] {}", Utc::now().format("%Y-%m-%d")));

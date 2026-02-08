@@ -1,6 +1,7 @@
 use std::path::Path;
 use anyhow::anyhow;
-use git2::{DescribeFormatOptions, DescribeOptions, Repository, RepositoryOpenFlags, StatusOptions};
+use git2::{BlameOptions, DescribeFormatOptions, DescribeOptions, Repository, RepositoryOpenFlags, Sort, StatusOptions};
+use crate::changelog::{BlameLine, CommitInfo};
 use crate::project::config::GitConfig;
 use crate::system::FileSystem;
 
@@ -76,6 +77,55 @@ impl GitRepo {
             .include_ignored(false);
 
         Ok(self.repo.statuses(Some(&mut opts))?.is_empty())
+    }
+
+    pub fn commits_since_tag(&self, tag: &str) -> anyhow::Result<Vec<CommitInfo>> {
+        let tag_obj = self.repo.revparse_single(tag)?;
+        let tag_oid = tag_obj.peel_to_commit()?.id();
+        let head_oid = self.repo.head()?.peel_to_commit()?.id();
+
+        let mut revwalk = self.repo.revwalk()?;
+        revwalk.set_sorting(Sort::TIME)?;
+        revwalk.push(head_oid)?;
+        revwalk.hide(tag_oid)?;
+
+        let mut commits = Vec::new();
+        for oid in revwalk {
+            let oid = oid?;
+            let commit = self.repo.find_commit(oid)?;
+            let message = commit.message().unwrap_or("").to_string();
+            let timestamp = commit.time().seconds();
+            commits.push(CommitInfo {
+                hash: oid.to_string(),
+                message,
+                timestamp,
+            });
+        }
+
+        Ok(commits)
+    }
+
+    pub fn blame_file(&self, path: &Path) -> anyhow::Result<Vec<BlameLine>> {
+        let workdir = self.repo.workdir()
+            .ok_or_else(|| anyhow!("Repository has no working directory"))?;
+        let relative = path.strip_prefix(workdir).unwrap_or(path);
+
+        let mut opts = BlameOptions::new();
+        let blame = self.repo.blame_file(relative, Some(&mut opts))?;
+
+        let content = std::fs::read_to_string(path)?;
+        let mut result = Vec::new();
+
+        for (i, line) in content.lines().enumerate() {
+            if let Some(hunk) = blame.get_line(i + 1) {
+                result.push(BlameLine {
+                    commit_hash: hunk.final_commit_id().to_string(),
+                    line_content: line.to_string(),
+                });
+            }
+        }
+
+        Ok(result)
     }
 
     pub fn update_and_commit(&self, version: semver::Version) -> anyhow::Result<()> {

@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Auto-populate changelog from commit messages with configurable commit format parsing
+- Support for Conventional Commits and Gitmoji commit message formats
+- Auto-detection mode that picks the best-matching commit format across all commits
+- Commit-to-changelog mapping: `feat` -> Added, `fix` -> Fixed, `refactor`/`perf` -> Changed, etc.
+- Smart merge with existing `[Unreleased]` entries using `git blame` for deduplication
+- Configurable scope inclusion and unmatched commit handling (optional "Other" section)
+- Breaking change detection with `[BREAKING]` prefix in changelog entries
+- New `[changelog]` configuration section in `.panproject.toml`
+
 ## [0.13.9] 2026-02-07
 
 ## [0.13.8] 2026-02-07

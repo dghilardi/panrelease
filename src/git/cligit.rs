@@ -1,3 +1,4 @@
+use crate::changelog::{BlameLine, CommitInfo};
 use crate::project::config::GitConfig;
 use crate::runner::CmdRunner;
 use crate::system::FileSystem;
@@ -86,6 +87,81 @@ impl GitRepo {
             .collect::<Vec<_>>();
 
         Ok(pending.is_empty())
+    }
+
+    pub fn commits_since_tag(&self, tag: &str) -> anyhow::Result<Vec<CommitInfo>> {
+        const SEP: &str = "---PANRELEASE_COMMIT_SEP---";
+        let format_str = format!("%H%n%at%n%B{SEP}");
+        let range = format!("{tag}..HEAD");
+        let mut runner = CmdRunner::build(
+            "git",
+            &[
+                String::from("log"),
+                range,
+                format!("--format={format_str}"),
+            ],
+            &self.path,
+        )?;
+        let out = runner.output().and_then(|b| Ok(String::from_utf8(b)?))?;
+
+        let mut commits = Vec::new();
+        for block in out.split(SEP) {
+            let block = block.trim();
+            if block.is_empty() {
+                continue;
+            }
+            let mut lines = block.lines();
+            let hash = match lines.next() {
+                Some(h) => h.trim().to_string(),
+                None => continue,
+            };
+            let timestamp: i64 = match lines.next() {
+                Some(ts) => ts.trim().parse().unwrap_or(0),
+                None => continue,
+            };
+            let message: String = lines.collect::<Vec<_>>().join("\n");
+            commits.push(CommitInfo {
+                hash,
+                message,
+                timestamp,
+            });
+        }
+
+        Ok(commits)
+    }
+
+    pub fn blame_file(&self, path: &Path) -> anyhow::Result<Vec<BlameLine>> {
+        let mut runner = CmdRunner::build(
+            "git",
+            &[
+                String::from("blame"),
+                String::from("--porcelain"),
+                path.to_string_lossy().to_string(),
+            ],
+            &self.path,
+        )?;
+        let out = match runner.output() {
+            Ok(b) => String::from_utf8(b)?,
+            Err(_) => return Ok(Vec::new()),
+        };
+
+        let mut result = Vec::new();
+        let mut current_hash = String::new();
+
+        for line in out.lines() {
+            if line.starts_with('\t') {
+                result.push(BlameLine {
+                    commit_hash: current_hash.clone(),
+                    line_content: line[1..].to_string(),
+                });
+            } else if let Some(hash) = line.split_whitespace().next() {
+                if hash.len() >= 40 && hash.chars().all(|c| c.is_ascii_hexdigit()) {
+                    current_hash = hash.to_string();
+                }
+            }
+        }
+
+        Ok(result)
     }
 
     pub fn update_and_commit(&self, version: semver::Version) -> anyhow::Result<()> {
