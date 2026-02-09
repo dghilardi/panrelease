@@ -45,11 +45,23 @@ impl <F: FileSystem> PanPackage for NpmPackage<F> {
 
     fn hook_after_rel(&self) -> anyhow::Result<()> {
         let mut runner = if F::is_a_file(&self.path.join("package-lock.json")) {
-            CmdRunner::build("npm", &[String::from("i"), String::from("--package-lock-only")], &self.path)?
+            CmdRunner::build("npm", &[
+                String::from("i"),
+                String::from("--package-lock-only"),
+                String::from("--no-audit"),
+                String::from("--no-fund")
+            ], &self.path)?
         } else if F::is_a_file(&self.path.join("yarn.lock")) {
-            CmdRunner::build("yarn", &[String::from("--mode"), String::from("update-lockfile")], &self.path)?
+            CmdRunner::build("yarn", &[
+                String::from("install"),
+                String::from("--non-interactive"),
+                String::from("--silent")
+            ], &self.path)?
         } else if F::is_a_file(&self.path.join("pnpm-lock.yaml")) {
-            CmdRunner::build("echo", &[String::from("lockfile update skipped")], &self.path)?
+            CmdRunner::build("pnpm", &[
+                String::from("install"),
+                String::from("--lockfile-only")
+            ], &self.path)?
         } else {
             anyhow::bail!("Cannot find any lockfile for package.json")
         };
