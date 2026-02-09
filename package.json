@@ -2,5 +2,8 @@
     "name": "panrelease-root",
     "private": true,
     "license": "MIT",
-    "description": "Root configuration for panrelease project"
+    "description": "Root configuration for panrelease project",
+    "workspaces": [
+        "nodejs"
+    ]
 }
