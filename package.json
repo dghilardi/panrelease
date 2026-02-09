@@ -1,0 +1,6 @@
+{
+    "name": "panrelease-root",
+    "private": true,
+    "license": "MIT",
+    "description": "Root configuration for panrelease project"
+}
