@@ -100,7 +100,7 @@ impl <F: FileSystem + 'static> PanProject<F> {
             return Err(anyhow!("Repository status is not clean"));
         }
 
-        let current_version = self.extract_master()?.extract_version()?;
+        let current_version = self.current_version()?;
 
         let strict_conf = match self.conf.vcs() {
             VcsConfig::Git(git_conf) => git_conf.strict.as_ref(),
@@ -210,6 +210,10 @@ impl <F: FileSystem + 'static> PanProject<F> {
             F::write_string(&changelog_path, &updated_changelog)?;
         }
         Ok(())
+    }
+
+    pub fn current_version(&self) -> anyhow::Result<semver::Version> {
+        self.extract_master()?.extract_version()
     }
 
     fn extract_modules(&self) -> anyhow::Result<Vec<PanModule<F>>> {

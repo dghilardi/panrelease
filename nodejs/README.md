@@ -77,6 +77,7 @@ npx panrelease minor
 | `minor` | Increment minor version | `1.0.0` -> `1.1.0` |
 | `major` | Increment major version | `1.0.0` -> `2.0.0` |
 | `post`  | Create post-release (build metadata) | `1.0.0` -> `1.0.0+r1` |
+| `show`  | Show current project version | `panrelease show` |
 | `<version>` | Set explicit version | `panrelease 2.1.0` |
 
 ## Documentation

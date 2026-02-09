@@ -25,6 +25,10 @@ pub fn run<I, T, S>(args: I) -> anyhow::Result<()>
                 bail!("Error releasing project - {err}");
             }
         }
+        Commands::Show => {
+            let version = project.current_version()?;
+            println!("{version}");
+        }
     }
     Ok(())
 }

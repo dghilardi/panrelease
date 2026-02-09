@@ -155,6 +155,7 @@ panrelease [OPTIONS] <BUMP_TYPE>
 | `minor` | Increment minor version | `1.2.3` -> `1.3.0` |
 | `patch` | Increment patch version | `1.2.3` -> `1.2.4` |
 | `post` | Create post-release with build metadata | `1.2.3` -> `1.2.3+feat.r1` |
+| `show` | Show current project version | `panrelease show` |
 | `X.Y.Z` | Set explicit version | `1.2.3` -> `2.0.0` |
 
 ### Options
@@ -184,6 +185,9 @@ panrelease 1.5.0
 
 # Post-release for feature branch
 panrelease post
+
+# Show current version
+panrelease show
 ```
 
 ## Package Manager Support

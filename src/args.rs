@@ -19,6 +19,8 @@ pub struct PanReleaseArgs {
 pub enum Commands {
     /// Release a new version
     Release(RelArgs),
+    /// Show current version
+    Show,
 }
 
 #[derive(Args, Debug)]
