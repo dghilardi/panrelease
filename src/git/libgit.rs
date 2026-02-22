@@ -85,10 +85,6 @@ impl GitRepo {
             .collect())
     }
 
-    pub fn is_staging_clean(&self) -> anyhow::Result<bool> {
-        Ok(self.dirty_files()?.is_empty())
-    }
-
     pub fn commits_since_tag(&self, tag: &str) -> anyhow::Result<Vec<CommitInfo>> {
         let tag_obj = self.repo.revparse_single(tag)?;
         let tag_oid = tag_obj.peel_to_commit()?.id();

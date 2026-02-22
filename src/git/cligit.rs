@@ -92,10 +92,6 @@ impl GitRepo {
             .collect())
     }
 
-    pub fn is_staging_clean(&self) -> anyhow::Result<bool> {
-        Ok(self.dirty_files()?.is_empty())
-    }
-
     pub fn commits_since_tag(&self, tag: &str) -> anyhow::Result<Vec<CommitInfo>> {
         const SEP: &str = "---PANRELEASE_COMMIT_SEP---";
         let format_str = format!("%H%n%at%n%B{SEP}");

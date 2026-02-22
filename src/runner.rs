@@ -17,35 +17,52 @@ use crate::wasm_utils::exec;
 
 #[cfg(not(target_arch = "wasm32"))]
 pub struct CmdRunner {
+    cmd_name: String,
     cmd_display: String,
+    cwd: std::path::PathBuf,
     command: Command,
 }
 
 #[cfg(not(target_arch = "wasm32"))]
 impl CmdRunner {
     pub fn build(cmd_name: &str, args: &[String], dir: impl AsRef<Path>) -> Result<Self> {
+        let cwd = dir.as_ref().to_path_buf();
         let mut command = Command::new(cmd_name);
-        command.current_dir(dir);
+        command.current_dir(&cwd);
         command.args(args);
         command.stdin(Stdio::piped());
 
         Ok(Self {
+            cmd_name: cmd_name.to_string(),
             cmd_display: format!("{cmd_name} {}", args.join(" ")),
+            cwd,
             command,
         })
     }
 
+    fn not_found_error(&self) -> anyhow::Error {
+        // Distinguish "command not in PATH" from "working directory does not exist".
+        // Both produce ErrorKind::NotFound on Linux, so we check the cwd explicitly.
+        if !self.cwd.exists() {
+            anyhow::anyhow!(
+                "failed to run `{}`: working directory {:?} does not exist",
+                self.cmd_display, self.cwd
+            )
+        } else {
+            anyhow::anyhow!(
+                "command not found: `{}` — is it installed and in your PATH?",
+                self.cmd_name
+            )
+        }
+    }
+
     pub fn run(&mut self) -> Result<()> {
-        let mut process = self.command.spawn().map_err(|e| {
-            if e.kind() == io::ErrorKind::NotFound {
-                anyhow::anyhow!(
-                    "command not found: `{}` — is it installed and in your PATH?",
-                    self.cmd_display.split_whitespace().next().unwrap_or(&self.cmd_display)
-                )
+        let mut process = self.command.spawn()
+            .map_err(|e| if e.kind() == io::ErrorKind::NotFound {
+                self.not_found_error()
             } else {
                 anyhow::anyhow!("failed to spawn `{}`: {e}", self.cmd_display)
-            }
-        })?;
+            })?;
         let exit_status = process.wait()?;
         if exit_status.success() {
             Ok(())
@@ -58,16 +75,12 @@ impl CmdRunner {
     }
 
     pub fn output(&mut self) -> Result<Vec<u8>> {
-        let out = self.command.output().map_err(|e| {
-            if e.kind() == io::ErrorKind::NotFound {
-                anyhow::anyhow!(
-                    "command not found: `{}` — is it installed and in your PATH?",
-                    self.cmd_display.split_whitespace().next().unwrap_or(&self.cmd_display)
-                )
+        let out = self.command.output()
+            .map_err(|e| if e.kind() == io::ErrorKind::NotFound {
+                self.not_found_error()
             } else {
                 anyhow::anyhow!("failed to run `{}`: {e}", self.cmd_display)
-            }
-        })?;
+            })?;
         if out.status.success() {
             Ok(out.stdout)
         } else {
@@ -189,5 +202,25 @@ mod tests {
         let msg = err.to_string();
         assert!(msg.contains("not found"), "error should say command was not found: {msg}");
         assert!(msg.contains("PATH"), "error should mention PATH: {msg}");
+    }
+
+    #[test]
+    fn run_nonexistent_cwd_does_not_blame_missing_command() {
+        let mut runner = CmdRunner::build(
+            "git",
+            &["status".to_string()],
+            "/tmp/this_cwd_does_not_exist_panrelease",
+        ).unwrap();
+        let err = runner.run().unwrap_err();
+        let msg = err.to_string();
+        // Should mention the directory, NOT suggest installing git
+        assert!(
+            msg.contains("this_cwd_does_not_exist_panrelease"),
+            "error should mention the bad cwd: {msg}"
+        );
+        assert!(
+            !msg.contains("installed and in your PATH"),
+            "error should NOT blame a missing command when cwd doesn't exist: {msg}"
+        );
     }
 }
