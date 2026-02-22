@@ -214,7 +214,8 @@ impl<F: FileSystem + 'static> PanProjectConfig<F> {
         if self.modules.is_empty() {
             Ok(None)
         } else if self.modules.len() == 1 {
-            let (name, conf) = self.modules.iter().next().expect("Module not found");
+            let (name, conf) = self.modules.iter().next()
+                .ok_or_else(|| anyhow!("Internal error: module list reported length 1 but iterator was empty"))?;
 
             Ok(Some(PanModule::new(String::from(name), conf.clone())?))
         } else {
@@ -231,7 +232,8 @@ impl<F: FileSystem + 'static> PanProjectConfig<F> {
                     main_modules.len()
                 ))
             } else {
-                let (name, conf) = main_modules.first().expect("Module not found");
+                let (name, conf) = main_modules.first()
+                    .ok_or_else(|| anyhow!("Internal error: main module list reported length 1 but was empty"))?;
                 Ok(Some(PanModule::new(String::from(*name), (*conf).clone())?))
             }
         }
