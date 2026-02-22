@@ -15,6 +15,7 @@ use crate::wasm_utils::exec;
 
 #[cfg(not(target_arch = "wasm32"))]
 pub struct CmdRunner {
+    cmd_display: String,
     command: Command,
 }
 
@@ -27,6 +28,7 @@ impl CmdRunner {
         command.stdin(Stdio::piped());
 
         Ok(Self {
+            cmd_display: format!("{cmd_name} {}", args.join(" ")),
             command,
         })
     }
@@ -37,17 +39,31 @@ impl CmdRunner {
         if exit_status.success() {
             Ok(())
         } else {
-            anyhow::bail!("process exited with {exit_status}")
+            anyhow::bail!(
+                "command `{}` failed with {}",
+                self.cmd_display, exit_status
+            )
         }
     }
 
     pub fn output(&mut self) -> Result<Vec<u8>> {
         let out = self.command.output()?;
-        let exit_status = out.status;
-        if exit_status.success() {
+        if out.status.success() {
             Ok(out.stdout)
         } else {
-            anyhow::bail!("process exited with {out:?}")
+            let stderr = String::from_utf8_lossy(&out.stderr);
+            let stderr = stderr.trim();
+            if stderr.is_empty() {
+                anyhow::bail!(
+                    "command `{}` failed with {}",
+                    self.cmd_display, out.status
+                )
+            } else {
+                anyhow::bail!(
+                    "command `{}` failed with {}:\n{}",
+                    self.cmd_display, out.status, stderr
+                )
+            }
         }
     }
 }
@@ -69,9 +85,9 @@ impl CmdRunner {
 
     pub fn run(&mut self) -> Result<()> {
         let opts = serde_wasm_bindgen::to_value(&json!({ "cwd": &self.dir }))
-            .expect("Error serializing options");
+            .map_err(|e| anyhow!("Error serializing command options: {e:?}"))?;
         let out = exec(self.command.clone(), opts)
-            .map_err(|e| anyhow!("Error executing command - {e:?}"))
+            .map_err(|e| anyhow!("Error executing command `{}`: {e:?}", self.command))
             .and_then(|res| Ok(String::from_utf8(res)?))?;
         crate::wasm_utils::log(&out);
         Ok(())
@@ -79,9 +95,49 @@ impl CmdRunner {
 
     pub fn output(&mut self) -> Result<Vec<u8>> {
         let opts = serde_wasm_bindgen::to_value(&json!({ "cwd": &self.dir }))
-            .expect("Error serializing options");
+            .map_err(|e| anyhow!("Error serializing command options: {e:?}"))?;
         let out = exec(self.command.clone(), opts)
-            .map_err(|e| anyhow!("Error executing command - {e:?}"))?;
+            .map_err(|e| anyhow!("Error executing command `{}`: {e:?}", self.command))?;
         Ok(out)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn run_failing_command_includes_command_name_in_error() {
+        let mut runner = CmdRunner::build(
+            "sh",
+            &["-c".to_string(), "exit 42".to_string()],
+            ".",
+        ).unwrap();
+        let err = runner.run().unwrap_err();
+        let msg = err.to_string();
+        assert!(msg.contains("sh"), "error should mention command name: {msg}");
+        assert!(msg.contains("42"), "error should mention exit code: {msg}");
+    }
+
+    #[test]
+    fn output_failing_command_includes_stderr_in_error() {
+        let mut runner = CmdRunner::build(
+            "sh",
+            &["-c".to_string(), "echo 'something went wrong' >&2; exit 1".to_string()],
+            ".",
+        ).unwrap();
+        let err = runner.output().unwrap_err();
+        let msg = err.to_string();
+        assert!(msg.contains("something went wrong"), "error should include stderr: {msg}");
+    }
+
+    #[test]
+    fn run_successful_command_returns_ok() {
+        let mut runner = CmdRunner::build(
+            "sh",
+            &["-c".to_string(), "exit 0".to_string()],
+            ".",
+        ).unwrap();
+        assert!(runner.run().is_ok());
     }
 }
