@@ -17,10 +17,19 @@ pub struct PanReleaseArgs {
 
 #[derive(Subcommand, Debug)]
 pub enum Commands {
+    /// Initialize a .panproject.toml configuration file
+    Init(InitArgs),
     /// Release a new version
     Release(RelArgs),
     /// Show current version
     Show,
+}
+
+#[derive(Args, Debug)]
+pub struct InitArgs {
+    /// Interactively prompt for optional configuration (strict mode, changelog, etc.)
+    #[arg(long)]
+    pub interactive: bool,
 }
 
 #[derive(Args, Debug)]

@@ -10,6 +10,7 @@ mod utils;
 mod git;
 mod changelog;
 pub mod conf;
+mod init;
 
 use anyhow::Context;
 use wasm_bindgen::prelude::*;
