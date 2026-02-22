@@ -7,6 +7,7 @@
 
 # Wasm build artifacts (nodejs)
 /nodejs/pkg
+/node_modules
 
 # IDE
 /.idea
