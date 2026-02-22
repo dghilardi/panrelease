@@ -1,6 +1,8 @@
 use std::path::Path;
 #[cfg(not(target_arch = "wasm32"))]
 use std::process::{Command, Stdio};
+#[cfg(not(target_arch = "wasm32"))]
+use std::io;
 
 use anyhow::Result;
 
@@ -34,7 +36,16 @@ impl CmdRunner {
     }
 
     pub fn run(&mut self) -> Result<()> {
-        let mut process = self.command.spawn()?;
+        let mut process = self.command.spawn().map_err(|e| {
+            if e.kind() == io::ErrorKind::NotFound {
+                anyhow::anyhow!(
+                    "command not found: `{}` — is it installed and in your PATH?",
+                    self.cmd_display.split_whitespace().next().unwrap_or(&self.cmd_display)
+                )
+            } else {
+                anyhow::anyhow!("failed to spawn `{}`: {e}", self.cmd_display)
+            }
+        })?;
         let exit_status = process.wait()?;
         if exit_status.success() {
             Ok(())
@@ -47,7 +58,16 @@ impl CmdRunner {
     }
 
     pub fn output(&mut self) -> Result<Vec<u8>> {
-        let out = self.command.output()?;
+        let out = self.command.output().map_err(|e| {
+            if e.kind() == io::ErrorKind::NotFound {
+                anyhow::anyhow!(
+                    "command not found: `{}` — is it installed and in your PATH?",
+                    self.cmd_display.split_whitespace().next().unwrap_or(&self.cmd_display)
+                )
+            } else {
+                anyhow::anyhow!("failed to run `{}`: {e}", self.cmd_display)
+            }
+        })?;
         if out.status.success() {
             Ok(out.stdout)
         } else {
@@ -139,5 +159,35 @@ mod tests {
             ".",
         ).unwrap();
         assert!(runner.run().is_ok());
+    }
+
+    #[test]
+    fn run_nonexistent_command_mentions_not_found_and_path() {
+        let mut runner = CmdRunner::build(
+            "this_command_does_not_exist_panrelease",
+            &[],
+            ".",
+        ).unwrap();
+        let err = runner.run().unwrap_err();
+        let msg = err.to_string();
+        assert!(msg.contains("not found"), "error should say command was not found: {msg}");
+        assert!(
+            msg.contains("this_command_does_not_exist_panrelease"),
+            "error should mention the command name: {msg}"
+        );
+        assert!(msg.contains("PATH"), "error should mention PATH: {msg}");
+    }
+
+    #[test]
+    fn output_nonexistent_command_mentions_not_found_and_path() {
+        let mut runner = CmdRunner::build(
+            "this_command_does_not_exist_panrelease",
+            &[],
+            ".",
+        ).unwrap();
+        let err = runner.output().unwrap_err();
+        let msg = err.to_string();
+        assert!(msg.contains("not found"), "error should say command was not found: {msg}");
+        assert!(msg.contains("PATH"), "error should mention PATH: {msg}");
     }
 }
