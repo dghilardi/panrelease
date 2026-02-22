@@ -205,7 +205,7 @@ impl <F: FileSystem + 'static> PanProject<F> {
             };
 
             let new_version = rel_args.level_or_version
-                .apply_with_slug(current_version.clone(), inferred_slug);
+                .apply_with_slug(current_version.clone(), inferred_slug)?;
 
             strict::validate_release(
                 &branch_kind,
@@ -219,7 +219,7 @@ impl <F: FileSystem + 'static> PanProject<F> {
         };
 
         let new_version = rel_args.level_or_version
-            .apply_with_slug(current_version, slug.as_deref());
+            .apply_with_slug(current_version, slug.as_deref())?;
 
         for mut module in self.extract_modules()? {
             module.set_version(&new_version)?;
