@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.16.0] 2026-02-22
+
 ### Fixed
 - CLI entry point now prints a clean `error: ...` message on stderr instead of a Rust panic trace
 - WASM/Node.js filesystem backend no longer panics on non-UTF-8 paths or JS bridge errors
