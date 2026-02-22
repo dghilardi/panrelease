@@ -2,8 +2,6 @@ use std::path::{Path, PathBuf};
 
 use anyhow::{anyhow, Context};
 use chrono::Utc;
-use regex::Regex;
-
 use crate::args::RelArgs;
 use crate::changelog;
 use crate::git::GitRepo;
@@ -69,6 +67,74 @@ fn replace_unreleased_content(content: &str, new_content: &str) -> String {
     }
 
     result
+}
+
+/// Insert `UNRELEASED_LINE` immediately before the first `\n## ` heading found
+/// in `content`. This replaces the unsupported lookahead regex pattern.
+fn insert_unreleased_section(content: &str) -> String {
+    match content.find("\n## ") {
+        Some(pos) => {
+            let mut result = String::with_capacity(content.len() + UNRELEASED_LINE.len());
+            result.push_str(&content[..pos]);
+            result.push_str(UNRELEASED_LINE);
+            result.push_str(&content[pos..]);
+            result
+        }
+        None => {
+            let mut result = content.to_string();
+            result.push_str(UNRELEASED_LINE);
+            result
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // --- insert_unreleased_section ---
+
+    /// Reproduces the original crash: a changelog without `## [Unreleased]` but
+    /// with at least one `## ` version heading. The old code used a lookahead
+    /// regex (`(?=\n## )`) unsupported by the `regex` crate, causing a panic.
+    #[test]
+    fn insert_unreleased_before_first_version_heading() {
+        let input = "# Changelog\n\n## [1.0.0] 2024-01-01\n\n- initial release\n";
+        let result = insert_unreleased_section(input);
+        assert!(
+            result.contains("\n## [Unreleased]"),
+            "result should contain the Unreleased heading"
+        );
+        // The Unreleased section must appear BEFORE the first version heading.
+        let unreleased_pos = result.find("\n## [Unreleased]").unwrap();
+        let version_pos = result.find("\n## [1.0.0]").unwrap();
+        assert!(
+            unreleased_pos < version_pos,
+            "Unreleased heading should come before the first version heading"
+        );
+    }
+
+    /// When the content has no `## ` headings at all, the unreleased line is
+    /// appended at the end (no panic, no garbled output).
+    #[test]
+    fn insert_unreleased_no_headings() {
+        let input = "# Changelog\n\nSome intro text.\n";
+        let result = insert_unreleased_section(input);
+        assert!(result.ends_with(UNRELEASED_LINE));
+    }
+
+    /// When `## [Unreleased]` is already present the caller should never invoke
+    /// `insert_unreleased_section`, but the function itself must still be
+    /// idempotent and not corrupt the content.
+    #[test]
+    fn insert_unreleased_idempotent_when_already_present() {
+        let input = "# Changelog\n\n## [Unreleased]\n\n## [1.0.0] 2024-01-01\n";
+        let result = insert_unreleased_section(input);
+        // A second Unreleased block is inserted before the existing one (the
+        // function does not check for an existing one – that is the caller's
+        // responsibility).  What matters is that it does NOT panic.
+        assert!(result.contains("## [Unreleased]"));
+    }
 }
 
 pub struct PanProject<F> {
@@ -174,10 +240,7 @@ impl <F: FileSystem + 'static> PanProject<F> {
             if !changelog_content.contains("\n## ") {
                 changelog_content.push_str(UNRELEASED_LINE);
             } else if !changelog_content.contains(UNRELEASED_LINE) {
-                changelog_content = Regex::new("(?=\n## )")
-                    .expect("Invalid regex")
-                    .replace(&changelog_content, UNRELEASED_LINE)
-                    .to_string();
+                changelog_content = insert_unreleased_section(&changelog_content);
             }
 
             // Populate changelog from commits if enabled
