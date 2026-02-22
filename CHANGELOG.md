@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- CLI entry point now prints a clean `error: ...` message on stderr instead of a Rust panic trace
+- WASM/Node.js filesystem backend no longer panics on non-UTF-8 paths or JS bridge errors
+- `apply_with_slug` returns an error instead of panicking when a branch slug contains characters invalid in semver build metadata (e.g. slashes in `feature/my-branch`)
+- `extract_master_mod` defensive fix: replace two unreachable `expect()` calls with proper error returns
+- Process execution errors now include the command name and stderr output, making failures from `git`, hooks, and package managers actionable
+- "Could not find repo dir" error now reports the directory that was searched for `.git`
+- Dirty staging area error now lists the uncommitted files instead of a generic message
+- `.panproject.toml` TOML parse errors now include the file path
+- Module validation errors now mention the module name and the expected manifest filename
+- Error chain is preserved when a release fails (no longer flattened to a single string)
+- Silent failures during changelog auto-population now emit `log::warn!` messages (visible with `RUST_LOG=warn`)
+- JSON path extraction errors now report the traversal path, actual value type, and available keys
+
 ## [0.15.1] 2026-02-22
 
 ### Fixed
