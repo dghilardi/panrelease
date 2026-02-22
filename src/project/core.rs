@@ -250,25 +250,48 @@ impl <F: FileSystem + 'static> PanProject<F> {
             // Populate changelog from commits if enabled
             let changelog_conf = self.conf.changelog();
             if changelog_conf.from_commits {
-                if let Ok(Some(prev_tag)) = self.repo.latest_version_tag("HEAD") {
-                    if let Ok(commits) = self.repo.commits_since_tag(&prev_tag) {
-                        let blame_lines = self.repo.blame_file(&changelog_path).unwrap_or_default();
+                match self.repo.latest_version_tag("HEAD") {
+                    Ok(Some(prev_tag)) => {
+                        match self.repo.commits_since_tag(&prev_tag) {
+                            Ok(commits) => {
+                                let blame_lines = self.repo.blame_file(&changelog_path).unwrap_or_default();
 
-                        let (unreleased_text, start_line) =
-                            extract_unreleased_section(&changelog_content);
+                                let (unreleased_text, start_line) =
+                                    extract_unreleased_section(&changelog_content);
 
-                        let populated = changelog::populate_changelog(
-                            &unreleased_text,
-                            start_line,
-                            &commits,
-                            &blame_lines,
-                            changelog_conf,
-                        );
+                                let populated = changelog::populate_changelog(
+                                    &unreleased_text,
+                                    start_line,
+                                    &commits,
+                                    &blame_lines,
+                                    changelog_conf,
+                                );
 
-                        if !populated.is_empty() {
-                            changelog_content =
-                                replace_unreleased_content(&changelog_content, &populated);
+                                if !populated.is_empty() {
+                                    changelog_content =
+                                        replace_unreleased_content(&changelog_content, &populated);
+                                }
+                            }
+                            Err(e) => {
+                                log::warn!(
+                                    "Could not read commits since tag '{}', \
+                                     changelog will not be auto-populated: {e}",
+                                    prev_tag
+                                );
+                            }
                         }
+                    }
+                    Ok(None) => {
+                        log::warn!(
+                            "No previous version tag found; \
+                             changelog will not be auto-populated from commits"
+                        );
+                    }
+                    Err(e) => {
+                        log::warn!(
+                            "Could not determine latest version tag, \
+                             changelog will not be auto-populated: {e}"
+                        );
                     }
                 }
             }
