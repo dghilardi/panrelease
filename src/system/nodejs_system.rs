@@ -24,14 +24,18 @@ impl EnvVars for NodeJsSystem {
 
 impl FileSystem for NodeJsSystem {
     fn read_string(path: &Path) -> anyhow::Result<String> {
-        let content = wasm_utils::read_file(path.to_str().expect("invalid path"), "utf8")
-            .map_err(|e| anyhow!("Error reading file - {e:?}"))?;
+        let path_str = path.to_str()
+            .ok_or_else(|| anyhow!("Path is not valid UTF-8: {:?}", path))?;
+        let content = wasm_utils::read_file(path_str, "utf8")
+            .map_err(|e| anyhow!("Error reading file {:?}: {e:?}", path))?;
         Ok(content)
     }
 
     fn write_string(path: &Path, content: &str) -> anyhow::Result<()> {
-        wasm_utils::write_file(path.to_str().expect("invalid path"), content)
-            .map_err(|e| anyhow!("Error writing file - {e:?}"))?;
+        let path_str = path.to_str()
+            .ok_or_else(|| anyhow!("Path is not valid UTF-8: {:?}", path))?;
+        wasm_utils::write_file(path_str, content)
+            .map_err(|e| anyhow!("Error writing file {:?}: {e:?}", path))?;
         Ok(())
     }
 
@@ -41,12 +45,12 @@ impl FileSystem for NodeJsSystem {
     }
 
     fn is_a_dir(path: &Path) -> bool {
-        wasm_utils::exists(path.to_str().expect("Invalid path"))
-            .expect("Error checking file existence")
+        let Some(path_str) = path.to_str() else { return false; };
+        wasm_utils::exists(path_str).unwrap_or(false)
     }
 
     fn is_a_file(path: &Path) -> bool {
-        wasm_utils::exists(path.to_str().expect("Invalid path"))
-            .expect("Error checking file existence")
+        let Some(path_str) = path.to_str() else { return false; };
+        wasm_utils::exists(path_str).unwrap_or(false)
     }
 }
