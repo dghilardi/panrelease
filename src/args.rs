@@ -37,24 +37,17 @@ pub enum TargetVersion {
 }
 
 impl TargetVersion {
-    pub fn apply(
-        &self,
-        current: semver::Version,
-    ) -> semver::Version {
-        self.apply_with_slug(current, None)
-    }
-
     pub fn apply_with_slug(
         &self,
         current: semver::Version,
         slug: Option<&str>,
-    ) -> semver::Version {
+    ) -> anyhow::Result<semver::Version> {
         match self {
             TargetVersion::Relative(bump_level) => {
                 bump_level.apply_with_slug(current, slug)
             }
             TargetVersion::Absolute(version) => {
-                version.to_owned()
+                Ok(version.to_owned())
             }
         }
     }
@@ -126,7 +119,7 @@ impl BumpLevel {
     fn apply(
         &self,
         current: semver::Version,
-    ) -> semver::Version {
+    ) -> anyhow::Result<semver::Version> {
         self.apply_with_slug(current, None)
     }
 
@@ -134,34 +127,34 @@ impl BumpLevel {
         &self,
         current: semver::Version,
         slug: Option<&str>,
-    ) -> semver::Version {
+    ) -> anyhow::Result<semver::Version> {
         match self {
             BumpLevel::Major => {
-                semver::Version {
+                Ok(semver::Version {
                     major: current.major + 1,
                     minor: 0,
                     patch: 0,
                     pre: Default::default(),
                     build: Default::default(),
-                }
+                })
             }
             BumpLevel::Minor => {
-                semver::Version {
+                Ok(semver::Version {
                     major: current.major,
                     minor: current.minor + 1,
                     patch: 0,
                     pre: Default::default(),
                     build: Default::default(),
-                }
+                })
             }
             BumpLevel::Patch => {
-                semver::Version {
+                Ok(semver::Version {
                     major: current.major,
                     minor: current.minor,
                     patch: current.patch + 1,
                     pre: Default::default(),
                     build: Default::default(),
-                }
+                })
             }
             BumpLevel::Post => {
                 let build = if let Some(slug) = slug {
@@ -177,23 +170,28 @@ impl BumpLevel {
                             BuildMetadata::new(&format!("{slug}.r1"))
                         }
                     }
-                    .expect("Error constructing post-release slug")
+                    .map_err(|e| anyhow::anyhow!(
+                        "Invalid slug '{slug}': semver build metadata requires alphanumeric \
+                         identifiers separated by dots (no slashes or special characters): {e}"
+                    ))?
                 } else {
                     // Original behavior
                     parse_build(current.build.as_str()).map(|(name, ver)| {
                         BuildMetadata::new(&format!("{}.r{}", name, ver.map(|v| v + 1).unwrap_or(1)))
                     })
                         .unwrap_or_else(|| BuildMetadata::new("dev.r1"))
-                        .expect("Error constructing post-release slug")
+                        .map_err(|e| anyhow::anyhow!(
+                            "Failed to construct post-release build metadata: {e}"
+                        ))?
                 };
 
-                semver::Version {
+                Ok(semver::Version {
                     major: current.major,
                     minor: current.minor,
                     patch: current.patch,
                     pre: Default::default(),
                     build,
-                }
+                })
             }
         }
     }
@@ -239,7 +237,7 @@ mod test {
     fn increment_patch() {
         assert_eq!(
             String::from("1.2.4"),
-            BumpLevel::Patch.apply(semver::Version::parse("1.2.3").unwrap()).to_string()
+            BumpLevel::Patch.apply(semver::Version::parse("1.2.3").unwrap()).unwrap().to_string()
         )
     }
 
@@ -247,7 +245,7 @@ mod test {
     fn increment_minor() {
         assert_eq!(
             String::from("1.3.0"),
-            BumpLevel::Minor.apply(semver::Version::parse("1.2.3").unwrap()).to_string()
+            BumpLevel::Minor.apply(semver::Version::parse("1.2.3").unwrap()).unwrap().to_string()
         )
     }
 
@@ -255,7 +253,7 @@ mod test {
     fn increment_major() {
         assert_eq!(
             String::from("2.0.0"),
-            BumpLevel::Major.apply(semver::Version::parse("1.2.3").unwrap()).to_string()
+            BumpLevel::Major.apply(semver::Version::parse("1.2.3").unwrap()).unwrap().to_string()
         )
     }
 
@@ -263,7 +261,7 @@ mod test {
     fn increment_postrel() {
         assert_eq!(
             String::from("1.2.3+feat.r2"),
-            BumpLevel::Post.apply(semver::Version::parse("1.2.3+feat.r1").unwrap()).to_string()
+            BumpLevel::Post.apply(semver::Version::parse("1.2.3+feat.r1").unwrap()).unwrap().to_string()
         )
     }
 
@@ -274,7 +272,7 @@ mod test {
             BumpLevel::Post.apply_with_slug(
                 semver::Version::parse("1.2.3").unwrap(),
                 Some("my-feature"),
-            ).to_string()
+            ).unwrap().to_string()
         )
     }
 
@@ -285,7 +283,7 @@ mod test {
             BumpLevel::Post.apply_with_slug(
                 semver::Version::parse("1.2.3+my-feature.r1").unwrap(),
                 Some("my-feature"),
-            ).to_string()
+            ).unwrap().to_string()
         )
     }
 
@@ -296,7 +294,7 @@ mod test {
             BumpLevel::Post.apply_with_slug(
                 semver::Version::parse("1.2.3+old-slug.r5").unwrap(),
                 Some("new-slug"),
-            ).to_string()
+            ).unwrap().to_string()
         )
     }
 
@@ -307,7 +305,7 @@ mod test {
             BumpLevel::Post.apply_with_slug(
                 semver::Version::parse("1.2.3+feat.r1").unwrap(),
                 None,
-            ).to_string()
+            ).unwrap().to_string()
         )
     }
 
@@ -318,7 +316,19 @@ mod test {
             BumpLevel::Post.apply_with_slug(
                 semver::Version::parse("1.2.3").unwrap(),
                 None,
-            ).to_string()
+            ).unwrap().to_string()
         )
+    }
+
+    #[test]
+    fn apply_with_invalid_slug_returns_error() {
+        // Slash is illegal in semver build metadata
+        let result = BumpLevel::Post.apply_with_slug(
+            semver::Version::parse("1.0.0").unwrap(),
+            Some("feature/my-branch"),
+        );
+        assert!(result.is_err());
+        let msg = result.unwrap_err().to_string();
+        assert!(msg.contains("feature/my-branch"), "error should mention the invalid slug: {msg}");
     }
 }

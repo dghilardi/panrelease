@@ -24,7 +24,11 @@ impl GitRepo {
             if F::is_a_dir(&current.join(".git")) {
                 break Ok(current);
             } else {
-                current = current.parent().ok_or(anyhow!("Could not find repo dir"))?;
+                current = current.parent().ok_or_else(|| anyhow!(
+                    "Could not find a git repository: no .git directory found \
+                     searching up from {:?}",
+                    path
+                ))?;
             }
         }
     }
@@ -73,20 +77,19 @@ impl GitRepo {
         }
     }
 
-    pub fn is_staging_clean(&self) -> anyhow::Result<bool> {
+    pub fn dirty_files(&self) -> anyhow::Result<Vec<String>> {
         let mut runner = CmdRunner::build(
             "git",
             &[String::from("status"), String::from("--porcelain=v1")],
             &self.path,
         )?;
         let out = runner.output().and_then(|b| Ok(String::from_utf8(b)?))?;
-        let pending = out
+        Ok(out
             .split('\n')
-            .map(|head| head.trim())
-            .filter(|head| !head.is_empty() && !(*head).starts_with("??"))
-            .collect::<Vec<_>>();
-
-        Ok(pending.is_empty())
+            .map(|line| line.trim())
+            .filter(|line| !line.is_empty() && !line.starts_with("??"))
+            .map(String::from)
+            .collect())
     }
 
     pub fn commits_since_tag(&self, tag: &str) -> anyhow::Result<Vec<CommitInfo>> {
@@ -210,5 +213,47 @@ impl GitRepo {
         }
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::system::NativeSystem;
+
+    #[test]
+    fn find_git_root_not_found_mentions_start_path() {
+        // /tmp/no_such_panrelease_repo is virtually guaranteed to have no .git above it
+        let start = std::path::Path::new("/tmp/no_such_panrelease_repo_xyz");
+        let result = GitRepo::find_git_root::<NativeSystem>(start);
+        let err = result.unwrap_err();
+        let msg = err.to_string();
+        assert!(
+            msg.contains("no_such_panrelease_repo_xyz"),
+            "error should mention the start path: {msg}"
+        );
+        assert!(
+            msg.contains(".git"),
+            "error should mention .git: {msg}"
+        );
+    }
+
+    #[test]
+    fn find_git_root_finds_panrelease_own_repo() {
+        // panrelease's own repo has a .git directory
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+        let result = GitRepo::find_git_root::<NativeSystem>(path);
+        assert!(result.is_ok(), "should find panrelease's own git root: {:?}", result);
+    }
+
+    #[test]
+    fn dirty_files_does_not_error_on_own_repo() {
+        // We only assert it doesn't error — the actual set of dirty files
+        // depends on the repo state at test time.
+        let config = crate::project::config::GitConfig::default();
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+        let repo = GitRepo::open::<NativeSystem>(config, path).unwrap();
+        let result = repo.dirty_files();
+        assert!(result.is_ok(), "dirty_files should not error: {:?}", result);
     }
 }

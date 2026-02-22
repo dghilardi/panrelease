@@ -152,7 +152,7 @@ fn strict_mainline_post_rejected() {
 
     let result = panrelease(dir, "post");
     assert!(result.is_err());
-    let err = result.unwrap_err().to_string();
+    let err = format!("{:#}", result.unwrap_err());
     assert!(
         err.contains("cannot release a post-version"),
         "Expected post-version error, got: {err}"
@@ -204,7 +204,7 @@ fn strict_feature_patch_rejected() {
 
     let result = panrelease(dir, "patch");
     assert!(result.is_err());
-    let err = result.unwrap_err().to_string();
+    let err = format!("{:#}", result.unwrap_err());
     assert!(
         err.contains("can only produce post-releases"),
         "Expected post-only error, got: {err}"
@@ -225,7 +225,7 @@ fn strict_feature_minor_rejected() {
 
     let result = panrelease(dir, "minor");
     assert!(result.is_err());
-    let err = result.unwrap_err().to_string();
+    let err = format!("{:#}", result.unwrap_err());
     assert!(
         err.contains("can only produce post-releases"),
         "Expected post-only error, got: {err}"
@@ -340,7 +340,7 @@ fn strict_hotfix_patch_rejected() {
 
     let result = panrelease(dir, "patch");
     assert!(result.is_err());
-    let err = result.unwrap_err().to_string();
+    let err = format!("{:#}", result.unwrap_err());
     assert!(
         err.contains("can only produce post-releases"),
         "Expected post-only error, got: {err}"
@@ -365,7 +365,7 @@ fn strict_unknown_branch_rejected() {
 
     let result = panrelease(dir, "patch");
     assert!(result.is_err());
-    let err = result.unwrap_err().to_string();
+    let err = format!("{:#}", result.unwrap_err());
     assert!(
         err.contains("does not match any known pattern"),
         "Expected unknown branch error, got: {err}"
@@ -386,7 +386,7 @@ fn strict_unknown_branch_post_also_rejected() {
 
     let result = panrelease(dir, "post");
     assert!(result.is_err());
-    let err = result.unwrap_err().to_string();
+    let err = format!("{:#}", result.unwrap_err());
     assert!(
         err.contains("does not match any known pattern"),
         "Expected unknown branch error, got: {err}"
@@ -533,9 +533,13 @@ fn strict_dirty_staging_rejected() {
 
     let result = panrelease(dir, "patch");
     assert!(result.is_err());
-    let err = result.unwrap_err().to_string();
+    let err = format!("{:#}", result.unwrap_err());
     assert!(
-        err.contains("not clean"),
+        err.contains("uncommitted changes"),
         "Expected dirty staging error, got: {err}"
+    );
+    assert!(
+        err.contains("lib.rs"),
+        "Error should list the dirty file, got: {err}"
     );
 }

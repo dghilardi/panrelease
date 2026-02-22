@@ -9,8 +9,10 @@ fn main() {
     env_logger::init();
     check_version();
 
-    engine::run::<_, _, NativeSystem>(std::env::args())
-        .expect("Error executing engine");
+    if let Err(err) = engine::run::<_, _, NativeSystem>(std::env::args()) {
+        eprintln!("error: {err:#}");
+        std::process::exit(1);
+    }
 }
 
 #[cfg(feature = "update-informer")]

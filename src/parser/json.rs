@@ -29,24 +29,51 @@ impl JsonString {
     }
 }
 
+fn json_type_name(v: &JsonValue<'_>) -> &'static str {
+    match v {
+        JsonValue::Null => "null",
+        JsonValue::Str(_) => "string",
+        JsonValue::Boolean(_) => "boolean",
+        JsonValue::Num(_) => "number",
+        JsonValue::Array(_) => "array",
+        JsonValue::Object(_) => "object",
+    }
+}
+
 impl FormatCodec for JsonString {
     fn extract(&self, path: &str) -> anyhow::Result<Option<&str>> {
         let (_, parsed) = root::<(&str, ErrorKind)>(&self.inner)
-            .map_err(|e| anyhow!("Error during parsing {e}"))?;
-        let path_parts = path.split('.');
+            .map_err(|e| anyhow!("JSON parse error: {e}"))?;
+        let path_parts: Vec<&str> = path.split('.').collect();
 
         let mut next = &parsed;
-        for key in path_parts {
+        let mut traversed = String::new();
+        for key in &path_parts {
+            if !traversed.is_empty() {
+                traversed.push('.');
+            }
+            traversed.push_str(key);
+
             let JsonValue::Object(obj) = next else {
-                anyhow::bail!("Parsed value is not an object");
+                anyhow::bail!(
+                    "Expected an object at '{}' while traversing path '{}', but found {}",
+                    traversed, path, json_type_name(next)
+                );
             };
-            let Some(value) = obj.get(key) else {
-                anyhow::bail!("Could not find key {key}");
+            let Some(value) = obj.get(*key) else {
+                let available: Vec<&str> = obj.keys().map(String::as_str).collect();
+                anyhow::bail!(
+                    "Key '{}' not found at '{}' while traversing path '{}'. Available keys: [{}]",
+                    key, traversed, path, available.join(", ")
+                );
             };
             next = value;
         }
         let JsonValue::Str(value) = next else {
-            anyhow::bail!("Could not find {path}")
+            anyhow::bail!(
+                "Expected a string at path '{}' but found {}",
+                path, json_type_name(next)
+            )
         };
         Ok(Some(*value))
     }
@@ -203,5 +230,36 @@ mod test {
         println!("{}", replaced);
 
         assert_eq!("world", extracted);
+    }
+
+    #[test]
+    fn extract_missing_key_mentions_available_keys() {
+        let input = JsonString::new(r#"{"version":"1.0.0","name":"myapp"}"#);
+        let err = input.extract("missing_key").unwrap_err();
+        let msg = err.to_string();
+        assert!(
+            msg.contains("version") || msg.contains("name"),
+            "error should list available keys: {msg}"
+        );
+        assert!(msg.contains("missing_key"), "error should mention the missing key: {msg}");
+    }
+
+    #[test]
+    fn extract_non_object_traversal_mentions_actual_type() {
+        let input = JsonString::new(r#"{"version":"1.0.0"}"#);
+        // "version" is a string, not an object, so traversing "version.sub" should fail clearly
+        let err = input.extract("version.sub").unwrap_err();
+        let msg = err.to_string();
+        assert!(msg.contains("string"), "error should mention actual type: {msg}");
+        assert!(msg.contains("version"), "error should mention the path: {msg}");
+    }
+
+    #[test]
+    fn extract_non_string_leaf_mentions_actual_type() {
+        let input = JsonString::new(r#"{"count":42}"#);
+        let err = input.extract("count").unwrap_err();
+        let msg = err.to_string();
+        assert!(msg.contains("number"), "error should mention actual type: {msg}");
+        assert!(msg.contains("count"), "error should mention the path: {msg}");
     }
 }

@@ -147,7 +147,8 @@ impl<F: FileSystem + 'static> PanProjectConfig<F> {
         }
         let conf_str = F::read_string(&conf_file_path)
             .with_context(|| format!("Failed to read .panproject.toml from {:?}", path))?;
-        let mut conf: PanProjectConfig<F> = toml::from_str(&conf_str)?;
+        let mut conf: PanProjectConfig<F> = toml::from_str(&conf_str)
+            .with_context(|| format!("Failed to parse .panproject.toml at {:?}", conf_file_path))?;
 
         conf.modules
             .iter_mut()
@@ -171,38 +172,42 @@ impl<F: FileSystem + 'static> PanProjectConfig<F> {
     fn validate_module(mod_name: &str, module_conf: &ProjectModule) -> anyhow::Result<()> {
         match module_conf.package_manager {
             PackageManager::Cargo => {
-                let cargo_toml_path = module_conf.path.join("Cargo.toml");
-                if !F::is_a_file(&cargo_toml_path) {
+                let manifest_path = module_conf.path.join("Cargo.toml");
+                if !F::is_a_file(&manifest_path) {
                     return Err(anyhow!(
-                        "Error during {mod_name} module validation. {:?} is not a valid file",
-                        cargo_toml_path
+                        "Module '{mod_name}' validation failed: expected Cargo.toml at {:?}. \
+                         Check that the path exists and is a regular file.",
+                        manifest_path
                     ));
                 }
             }
             PackageManager::Npm => {
-                let cargo_toml_path = module_conf.path.join("package.json");
-                if !F::is_a_file(&cargo_toml_path) {
+                let manifest_path = module_conf.path.join("package.json");
+                if !F::is_a_file(&manifest_path) {
                     return Err(anyhow!(
-                        "Error during {mod_name} module validation. {:?} is not a valid file",
-                        cargo_toml_path
+                        "Module '{mod_name}' validation failed: expected package.json at {:?}. \
+                         Check that the path exists and is a regular file.",
+                        manifest_path
                     ));
                 }
             }
             PackageManager::Maven => {
-                let cargo_toml_path = module_conf.path.join("pom.xml");
-                if !F::is_a_file(&cargo_toml_path) {
+                let manifest_path = module_conf.path.join("pom.xml");
+                if !F::is_a_file(&manifest_path) {
                     return Err(anyhow!(
-                        "Error during {mod_name} module validation. {:?} is not a valid file",
-                        cargo_toml_path
+                        "Module '{mod_name}' validation failed: expected pom.xml at {:?}. \
+                         Check that the path exists and is a regular file.",
+                        manifest_path
                     ));
                 }
             }
             PackageManager::Gradle => {
-                let cargo_toml_path = module_conf.path.join("gradle.properties");
-                if !F::is_a_file(&cargo_toml_path) {
+                let manifest_path = module_conf.path.join("gradle.properties");
+                if !F::is_a_file(&manifest_path) {
                     return Err(anyhow!(
-                        "Error during {mod_name} module validation. {:?} is not a valid file",
-                        cargo_toml_path
+                        "Module '{mod_name}' validation failed: expected gradle.properties at {:?}. \
+                         Check that the path exists and is a regular file.",
+                        manifest_path
                     ));
                 }
             }
@@ -214,7 +219,8 @@ impl<F: FileSystem + 'static> PanProjectConfig<F> {
         if self.modules.is_empty() {
             Ok(None)
         } else if self.modules.len() == 1 {
-            let (name, conf) = self.modules.iter().next().expect("Module not found");
+            let (name, conf) = self.modules.iter().next()
+                .ok_or_else(|| anyhow!("Internal error: module list reported length 1 but iterator was empty"))?;
 
             Ok(Some(PanModule::new(String::from(name), conf.clone())?))
         } else {
@@ -231,7 +237,8 @@ impl<F: FileSystem + 'static> PanProjectConfig<F> {
                     main_modules.len()
                 ))
             } else {
-                let (name, conf) = main_modules.first().expect("Module not found");
+                let (name, conf) = main_modules.first()
+                    .ok_or_else(|| anyhow!("Internal error: main module list reported length 1 but was empty"))?;
                 Ok(Some(PanModule::new(String::from(*name), (*conf).clone())?))
             }
         }
@@ -242,5 +249,55 @@ impl<F: FileSystem + 'static> PanProjectConfig<F> {
             .iter()
             .map(|(name, conf)| PanModule::new(String::from(name), conf.clone()))
             .collect()
+    }
+
+    #[cfg(test)]
+    pub(crate) fn validate_module_pub(mod_name: &str, module_conf: &ProjectModule) -> anyhow::Result<()> {
+        Self::validate_module(mod_name, module_conf)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::system::NativeSystem;
+
+    #[test]
+    fn validate_module_missing_manifest_mentions_module_name_and_file() {
+        let conf = ProjectModule {
+            path: std::path::PathBuf::from("/nonexistent/path"),
+            main: false,
+            package_manager: PackageManager::Npm,
+            hooks: Default::default(),
+        };
+        let err = PanProjectConfig::<NativeSystem>::validate_module_pub("my-module", &conf)
+            .unwrap_err();
+        let msg = err.to_string();
+        assert!(msg.contains("my-module"), "error should mention module name: {msg}");
+        assert!(msg.contains("package.json"), "error should mention manifest file: {msg}");
+        assert!(msg.contains("nonexistent"), "error should mention the path: {msg}");
+    }
+
+    #[test]
+    fn validate_module_missing_cargo_toml_mentions_cargo_toml() {
+        let conf = ProjectModule {
+            path: std::path::PathBuf::from("/nonexistent/path"),
+            main: false,
+            package_manager: PackageManager::Cargo,
+            hooks: Default::default(),
+        };
+        let err = PanProjectConfig::<NativeSystem>::validate_module_pub("my-crate", &conf)
+            .unwrap_err();
+        let msg = err.to_string();
+        assert!(msg.contains("my-crate"), "error should mention module name: {msg}");
+        assert!(msg.contains("Cargo.toml"), "error should mention Cargo.toml: {msg}");
+    }
+
+    #[test]
+    fn parse_toml_error_context_contains_filename() {
+        // Verify the context string format used in load() contains .panproject.toml
+        let fake_path = std::path::PathBuf::from("/project/.panproject.toml");
+        let context = format!("Failed to parse .panproject.toml at {:?}", fake_path);
+        assert!(context.contains(".panproject.toml"), "context should mention the config file: {context}");
     }
 }

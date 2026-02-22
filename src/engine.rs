@@ -1,5 +1,5 @@
 use std::ffi::OsString;
-use anyhow::{bail, Context};
+use anyhow::Context;
 use clap::Parser;
 use crate::args::{Commands, PanReleaseArgs};
 use crate::conf::loader::ConfigLoader;
@@ -21,9 +21,7 @@ pub fn run<I, T, S>(args: I) -> anyhow::Result<()>
 
     match opts.subcommand {
         Commands::Release(rel_args) => {
-            if let Err(err) = project.release(rel_args) {
-                bail!("Error releasing project - {err}");
-            }
+            project.release(rel_args).context("Error releasing project")?;
         }
         Commands::Show => {
             let version = project.current_version()?;

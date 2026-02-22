@@ -24,8 +24,11 @@ impl GitRepo {
             if F::is_a_dir(&current.join(".git")) {
                 break Ok(current);
             } else {
-                current = current.parent()
-                    .ok_or(anyhow!("Could not find repo dir"))?;
+                current = current.parent().ok_or_else(|| anyhow!(
+                    "Could not find a git repository: no .git directory found \
+                     searching up from {:?}",
+                    path
+                ))?;
             }
         }
     }
@@ -69,14 +72,17 @@ impl GitRepo {
         }
     }
 
-    pub fn is_staging_clean(&self) -> anyhow::Result<bool> {
+    pub fn dirty_files(&self) -> anyhow::Result<Vec<String>> {
         let mut opts = StatusOptions::new();
         opts
             .include_unmodified(false)
             .include_untracked(false)
             .include_ignored(false);
 
-        Ok(self.repo.statuses(Some(&mut opts))?.is_empty())
+        Ok(self.repo.statuses(Some(&mut opts))?
+            .iter()
+            .filter_map(|s| s.path().map(String::from))
+            .collect())
     }
 
     pub fn commits_since_tag(&self, tag: &str) -> anyhow::Result<Vec<CommitInfo>> {
