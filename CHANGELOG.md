@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Error chain is preserved when a release fails (no longer flattened to a single string)
 - Silent failures during changelog auto-population now emit `log::warn!` messages (visible with `RUST_LOG=warn`)
 - JSON path extraction errors now report the traversal path, actual value type, and available keys
+- Missing CLI tools (e.g. `git` not installed) now produce a clear "command not found — is it in your PATH?" error instead of a raw OS error 2
 
 ## [0.15.1] 2026-02-22
 
