@@ -24,7 +24,11 @@ impl GitRepo {
             if F::is_a_dir(&current.join(".git")) {
                 break Ok(current);
             } else {
-                current = current.parent().ok_or(anyhow!("Could not find repo dir"))?;
+                current = current.parent().ok_or_else(|| anyhow!(
+                    "Could not find a git repository: no .git directory found \
+                     searching up from {:?}",
+                    path
+                ))?;
             }
         }
     }
@@ -210,5 +214,36 @@ impl GitRepo {
         }
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::system::NativeSystem;
+
+    #[test]
+    fn find_git_root_not_found_mentions_start_path() {
+        // /tmp/no_such_panrelease_repo is virtually guaranteed to have no .git above it
+        let start = std::path::Path::new("/tmp/no_such_panrelease_repo_xyz");
+        let result = GitRepo::find_git_root::<NativeSystem>(start);
+        let err = result.unwrap_err();
+        let msg = err.to_string();
+        assert!(
+            msg.contains("no_such_panrelease_repo_xyz"),
+            "error should mention the start path: {msg}"
+        );
+        assert!(
+            msg.contains(".git"),
+            "error should mention .git: {msg}"
+        );
+    }
+
+    #[test]
+    fn find_git_root_finds_panrelease_own_repo() {
+        // panrelease's own repo has a .git directory
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+        let result = GitRepo::find_git_root::<NativeSystem>(path);
+        assert!(result.is_ok(), "should find panrelease's own git root: {:?}", result);
     }
 }

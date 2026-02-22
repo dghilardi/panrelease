@@ -24,8 +24,11 @@ impl GitRepo {
             if F::is_a_dir(&current.join(".git")) {
                 break Ok(current);
             } else {
-                current = current.parent()
-                    .ok_or(anyhow!("Could not find repo dir"))?;
+                current = current.parent().ok_or_else(|| anyhow!(
+                    "Could not find a git repository: no .git directory found \
+                     searching up from {:?}",
+                    path
+                ))?;
             }
         }
     }
