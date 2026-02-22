@@ -162,8 +162,12 @@ impl <F: FileSystem + 'static> PanProject<F> {
     }
 
     pub fn release(&self, rel_args: RelArgs) -> anyhow::Result<()> {
-        if !self.repo.is_staging_clean()? {
-            return Err(anyhow!("Repository status is not clean"));
+        let dirty = self.repo.dirty_files()?;
+        if !dirty.is_empty() {
+            return Err(anyhow!(
+                "Repository has uncommitted changes. Commit or stash them before releasing:\n{}",
+                dirty.iter().map(|f| format!("  {f}")).collect::<Vec<_>>().join("\n")
+            ));
         }
 
         let current_version = self.current_version()?;

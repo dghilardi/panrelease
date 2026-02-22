@@ -535,7 +535,11 @@ fn strict_dirty_staging_rejected() {
     assert!(result.is_err());
     let err = result.unwrap_err().to_string();
     assert!(
-        err.contains("not clean"),
+        err.contains("uncommitted changes"),
         "Expected dirty staging error, got: {err}"
+    );
+    assert!(
+        err.contains("lib.rs"),
+        "Error should list the dirty file, got: {err}"
     );
 }

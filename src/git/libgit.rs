@@ -72,14 +72,21 @@ impl GitRepo {
         }
     }
 
-    pub fn is_staging_clean(&self) -> anyhow::Result<bool> {
+    pub fn dirty_files(&self) -> anyhow::Result<Vec<String>> {
         let mut opts = StatusOptions::new();
         opts
             .include_unmodified(false)
             .include_untracked(false)
             .include_ignored(false);
 
-        Ok(self.repo.statuses(Some(&mut opts))?.is_empty())
+        Ok(self.repo.statuses(Some(&mut opts))?
+            .iter()
+            .filter_map(|s| s.path().map(String::from))
+            .collect())
+    }
+
+    pub fn is_staging_clean(&self) -> anyhow::Result<bool> {
+        Ok(self.dirty_files()?.is_empty())
     }
 
     pub fn commits_since_tag(&self, tag: &str) -> anyhow::Result<Vec<CommitInfo>> {
