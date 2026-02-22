@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.15.1] 2026-02-22
+
 ### Fixed
 - Changelog update no longer panics when `## [Unreleased]` is absent: replaced unsupported lookahead regex (`(?=\n## )`) with plain string insertion
 
