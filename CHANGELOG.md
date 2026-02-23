@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.18.0] 2026-02-23
 ### Added
 - Generic package manager: support for custom version files via `packageManager = "Generic"` with configurable `file`, `format` (json/xml/toml), and `versionField` (dot notation)
 - TOML format-preserving codec (`TomlString`) for Generic package manager
