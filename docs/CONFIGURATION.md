@@ -132,11 +132,14 @@ The package manager used by this module. Determines which manifest file is read 
 | `"Npm"` | `package.json` | Node.js projects using npm/yarn/pnpm |
 | `"Maven"` | `pom.xml` | Java projects using Maven |
 | `"Gradle"` | `gradle.properties` | Java/Kotlin projects using Gradle |
+| `"Generic"` | User-defined | Any project with a version in a JSON, XML, or TOML file |
 
 ```toml
 [modules.backend]
 packageManager = "Maven"
 ```
+
+When using `"Generic"`, additional fields are required — see [Generic](#generic) below.
 
 ### `main` (boolean)
 
@@ -239,6 +242,38 @@ Reads and writes the `version` property in `gradle.properties`:
 version=1.0.0
 ```
 
+### Generic
+
+For projects that store their version in a custom file not covered by the built-in package managers. Requires three additional fields in the module configuration:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `file` | string | Filename of the manifest (relative to module `path`) |
+| `format` | string | File format: `"json"`, `"xml"`, or `"toml"` |
+| `versionField` | string | Dot-separated path to the version field |
+
+```toml
+[modules.tauri]
+path = "src-tauri"
+packageManager = "Generic"
+file = "tauri.conf.json"
+format = "json"
+versionField = "version"
+```
+
+The `versionField` uses dot notation to navigate nested structures. For example, `"package.version"` would target the `version` key inside a `package` object (JSON/TOML) or element (XML).
+
+| Format | File example | versionField | Navigates to |
+|--------|-------------|-------------|-------------|
+| `json` | `config.json` | `version` | `{"version": "1.0.0"}` |
+| `json` | `config.json` | `package.version` | `{"package": {"version": "1.0.0"}}` |
+| `xml` | `config.xml` | `project.version` | `<project><version>1.0.0</version></project>` |
+| `toml` | `config.toml` | `package.version` | `[package]` then `version = "1.0.0"` |
+
+Generic modules have no built-in post-release hook (unlike Cargo's `cargo check` or Npm's lockfile update). Use the `[hooks.after_rel]` section for any custom commands you need.
+
+**Note:** Generic modules cannot be auto-detected — they must be explicitly configured in `.panproject.toml`.
+
 ## Examples
 
 ### Single Rust Project
@@ -326,6 +361,34 @@ main = true
 [modules.frontend]
 path = "frontend"
 packageManager = "Npm"
+```
+
+### Tauri Project (Npm + Cargo + Generic)
+
+```toml
+[vcs]
+software = "Git"
+tag_template = "v{{version}}"
+
+[modules.frontend]
+path = "."
+packageManager = "Npm"
+main = true
+
+[modules.rust-backend]
+path = "src-tauri"
+packageManager = "Cargo"
+
+[modules.tauri-conf]
+path = "src-tauri"
+packageManager = "Generic"
+file = "tauri.conf.json"
+format = "json"
+versionField = "version"
+
+[modules.frontend.hooks.after_rel]
+build = ["pnpm", "build"]
+test = ["pnpm", "test"]
 ```
 
 ## Auto-Detection

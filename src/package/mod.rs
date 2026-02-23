@@ -1,4 +1,5 @@
 pub mod cargo;
+pub mod generic;
 pub mod gradle;
 pub mod maven;
 pub mod npm;

@@ -110,7 +110,11 @@ fn space<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E>
 }
 
 fn parse_str<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E> {
-    escaped(satisfy(|c| !c.is_control() && !['\\', '"'].contains(&c)), '\\', one_of("\"n\\"))(i)
+    escaped(
+        satisfy(|c| !c.is_control() && !['\\', '"'].contains(&c)),
+        '\\',
+        one_of("\"\\/bfnrtu"),
+    )(i)
 }
 
 fn boolean<'a, E: ParseError<&'a str>>(input: &'a str) -> IResult<&'a str, bool, E> {
@@ -128,10 +132,15 @@ fn null<'a, E: ParseError<&'a str>>(input: &'a str) -> IResult<&'a str, (), E> {
 fn string<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
     i: &'a str,
 ) -> IResult<&'a str, &'a str, E> {
-    context(
-        "string",
-        preceded(char('\"'), cut(terminated(parse_str, char('\"')))),
-    )(i)
+    let (rest, _) = context("string", char('\"'))(i)?;
+    if rest.starts_with('"') {
+        // empty string ""
+        Ok((&rest[1..], &rest[..0]))
+    } else {
+        let (rest2, content) = cut(parse_str)(rest)?;
+        let (rest3, _) = cut(char('\"'))(rest2)?;
+        Ok((rest3, content))
+    }
 }
 
 fn array<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
@@ -261,5 +270,39 @@ mod test {
         let msg = err.to_string();
         assert!(msg.contains("number"), "error should mention actual type: {msg}");
         assert!(msg.contains("count"), "error should mention the path: {msg}");
+    }
+
+    #[test]
+    fn parse_empty_string_values() {
+        let input = JsonString::new(r#"{"name":"","version":"1.0.0"}"#);
+        let ver = input.extract("version").unwrap().unwrap();
+        assert_eq!(ver, "1.0.0");
+    }
+
+    #[test]
+    fn parse_json_with_all_escape_sequences() {
+        let input = JsonString::new(r#"{"path":"a\/b","tab":"a\tb","version":"2.0.0"}"#);
+        let ver = input.extract("version").unwrap().unwrap();
+        assert_eq!(ver, "2.0.0");
+    }
+
+    #[test]
+    fn parse_complex_json_with_arrays_nulls_and_empty_strings() {
+        let input = JsonString::new(r#"{
+  "version": "0.1.0",
+  "bundle": {
+    "copyright": "",
+    "icon": ["a.png", "b.png"],
+    "macOS": {
+      "entitlements": null,
+      "frameworks": []
+    },
+    "windows": {
+      "timestampUrl": ""
+    }
+  }
+}"#);
+        let ver = input.extract("version").unwrap().unwrap();
+        assert_eq!(ver, "0.1.0");
     }
 }

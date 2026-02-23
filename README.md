@@ -6,11 +6,11 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![npm version](https://badge.fury.io/js/panrelease.svg)](https://www.npmjs.com/package/panrelease)
 
-**Panrelease** is a versatile release automation tool that manages version bumping, changelog updates, and Git operations across multiple package managers. It supports **Cargo** (Rust), **npm** (Node.js), **Maven**, and **Gradle** (Java) projects in a unified workflow.
+**Panrelease** is a versatile release automation tool that manages version bumping, changelog updates, and Git operations across multiple package managers. It supports **Cargo** (Rust), **npm** (Node.js), **Maven**, **Gradle** (Java), and **custom file formats** (JSON/XML/TOML) in a unified workflow.
 
 ## Features
 
-- **Multi-Language Support** - Unified version management for Cargo, npm, Maven, and Gradle projects
+- **Multi-Language Support** - Unified version management for Cargo, npm, Maven, Gradle, and custom file formats
 - **Semantic Versioning** - Automatic major, minor, patch, and post-release version bumping
 - **Changelog Automation** - Automatically updates CHANGELOG.md following [Keep a Changelog](https://keepachangelog.com/) format
 - **Changelog from Commits** - Auto-populate changelog sections from commit messages (Conventional Commits, Gitmoji)
@@ -117,7 +117,7 @@ tag_template = "{{version}}"    # Git tag format (e.g., "v{{version}}" -> "v1.0.
 
 [modules.myapp]
 path = "."
-packageManager = "Cargo"        # Cargo | Npm | Maven | Gradle
+packageManager = "Cargo"        # Cargo | Npm | Maven | Gradle | Generic
 main = true                     # Designates primary module for version detection
 ```
 
@@ -130,7 +130,7 @@ main = true                     # Designates primary module for version detectio
 | `vcs` | `tag_template` | string | Git tag template (default: `{{version}}`) |
 | `vcs.strict` | `mainline` | string | Mainline branch name for [strict mode](#strict-mode) validation |
 | `modules.<name>` | `path` | string | Path to module relative to project root |
-| `modules.<name>` | `packageManager` | string | Package manager: `Cargo`, `Npm`, `Maven`, `Gradle` |
+| `modules.<name>` | `packageManager` | string | Package manager: `Cargo`, `Npm`, `Maven`, `Gradle`, `Generic` |
 | `modules.<name>` | `main` | bool | Mark as primary module for version extraction |
 | `changelog` | `from_commits` | bool | Enable changelog population from commit messages (default: `false`) |
 | `changelog` | `commit_format` | string | Commit format: `auto`, `conventional`, `gitmoji` (default: `auto`) |
@@ -235,6 +235,21 @@ path = "."
 packageManager = "Gradle"
 main = true
 ```
+
+### Generic (Custom Files)
+
+For any project that stores its version in a JSON, XML, or TOML file not covered by the built-in managers. Specify the file name, format, and the dot-separated path to the version field.
+
+```toml
+[modules.tauri-conf]
+path = "src-tauri"
+packageManager = "Generic"
+file = "tauri.conf.json"
+format = "json"
+versionField = "version"
+```
+
+Supported formats: `json`, `xml`, `toml`. See [Configuration Guide](docs/CONFIGURATION.md#generic) for details.
 
 ## Multi-Module Projects
 

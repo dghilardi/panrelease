@@ -4,6 +4,7 @@ use std::path::PathBuf;
 use anyhow::bail;
 
 use crate::package::cargo::CargoPackage;
+use crate::package::generic::GenericPackage;
 use crate::package::gradle::GradlePackage;
 use crate::package::maven::MavenPackage;
 use crate::package::npm::NpmPackage;
@@ -49,11 +50,19 @@ impl<F: FileSystem + 'static> PanModule<F> {
     }
 
     fn extract_package(conf: &ProjectModule) -> anyhow::Result<Box<dyn PanPackage>> {
-        Ok(match conf.package_manager {
+        Ok(match &conf.package_manager {
             PackageManager::Cargo => Box::new(CargoPackage::<F>::new(conf.path.clone())?),
             PackageManager::Npm => Box::new(NpmPackage::<F>::new(conf.path.clone())?),
             PackageManager::Maven => Box::new(MavenPackage::<F>::new(conf.path.clone())?),
             PackageManager::Gradle => Box::new(GradlePackage::<F>::new(conf.path.clone())?),
+            PackageManager::Generic { file, format, version_field } => {
+                Box::new(GenericPackage::<F>::new(
+                    conf.path.clone(),
+                    file,
+                    format,
+                    version_field,
+                )?)
+            }
         })
     }
 

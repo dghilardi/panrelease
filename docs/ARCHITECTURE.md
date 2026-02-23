@@ -49,9 +49,9 @@ This document describes the technical architecture of Panrelease, its design pri
 │ │GitRepo │  │PanPackage│   │  updater   │               │
 │ └────────┘  └──────────┘   └────────────┘               │
 │                  │                                        │
-│    ┌─────┬──────┼──────┬────────┐                        │
-│    ▼     ▼      ▼      ▼        ▼                        │
-│ Cargo   Npm   Maven  Gradle  (future)                    │
+│    ┌─────┬──────┼──────┬────────┬───────┐                 │
+│    ▼     ▼      ▼      ▼        ▼       ▼                 │
+│ Cargo   Npm   Maven  Gradle  Generic  (future)            │
 │                                                           │
 │ ┌─────────────────────────────────────────────────────┐  │
 │ │              system/ (FileSystem trait)              │  │
@@ -91,6 +91,7 @@ Each file implements the `PanPackage` trait:
 - **`npm.rs`** - Reads/writes `package.json`, detects and updates lockfiles (npm/yarn/pnpm)
 - **`maven.rs`** - Parses `pom.xml` using custom XML parser, supports property-based versions
 - **`gradle.rs`** - Reads/writes `gradle.properties`
+- **`generic.rs`** - User-configurable package manager supporting JSON, XML, and TOML files with dot-notation path to version field
 
 ### `src/git/` - Git Integration
 - **`mod.rs`** - `GitRepo` struct and common interface
@@ -98,8 +99,9 @@ Each file implements the `PanPackage` trait:
 - **`libgit.rs`** - Alternative implementation using the `git2` library (behind `libgit` feature flag)
 
 ### `src/parser/` - File Parsers
-- **`json.rs`** - JSON manipulation for `package.json`
-- **`xml/`** - Custom XML parser built with `nom` for `pom.xml` (avoids heavy XML dependencies)
+- **`json.rs`** - Format-preserving JSON manipulation (custom `nom`-based parser)
+- **`xml/`** - Format-preserving XML parser built with `nom` for `pom.xml`
+- **`tomlcodec.rs`** - Format-preserving TOML manipulation (wraps `toml_edit`)
 
 ### `src/system/` - Platform Abstraction
 - **`contract.rs`** - `FileSystem` and `EnvVars` traits
@@ -149,10 +151,15 @@ Detected automatically or configured explicitly:
 
 ```rust
 pub enum PackageManager {
-    Cargo,   // Detects Cargo.toml
-    Npm,     // Detects package.json
-    Maven,   // Detects pom.xml
-    Gradle,  // Detects gradle.properties
+    Cargo,      // Detects Cargo.toml
+    Npm,        // Detects package.json
+    Maven,      // Detects pom.xml
+    Gradle,     // Detects gradle.properties
+    Generic {   // User-configured: any JSON, XML, or TOML file
+        file: String,
+        format: GenericFormat,
+        version_field: String,
+    },
 }
 ```
 

@@ -103,13 +103,27 @@ fn default_main() -> bool {
     false
 }
 
-#[derive(Deserialize, Debug, Clone, Copy)]
+#[derive(Deserialize, Debug, Clone)]
+#[serde(rename_all = "lowercase")]
+pub enum GenericFormat {
+    Json,
+    Xml,
+    Toml,
+}
+
+#[derive(Deserialize, Debug, Clone)]
 #[serde(tag = "packageManager")]
 pub enum PackageManager {
     Cargo,
     Npm,
     Maven,
     Gradle,
+    Generic {
+        file: String,
+        format: GenericFormat,
+        #[serde(rename = "versionField")]
+        version_field: String,
+    },
 }
 
 impl PackageManager {
@@ -211,6 +225,16 @@ impl<F: FileSystem + 'static> PanProjectConfig<F> {
                     ));
                 }
             }
+            PackageManager::Generic { ref file, .. } => {
+                let manifest_path = module_conf.path.join(file);
+                if !F::is_a_file(&manifest_path) {
+                    return Err(anyhow!(
+                        "Module '{mod_name}' validation failed: expected '{file}' at {:?}. \
+                         Check that the path exists and is a regular file.",
+                        manifest_path
+                    ));
+                }
+            }
         }
         Ok(())
     }
@@ -291,6 +315,39 @@ mod tests {
         let msg = err.to_string();
         assert!(msg.contains("my-crate"), "error should mention module name: {msg}");
         assert!(msg.contains("Cargo.toml"), "error should mention Cargo.toml: {msg}");
+    }
+
+    #[test]
+    fn validate_module_missing_generic_file_mentions_file_name() {
+        let conf = ProjectModule {
+            path: std::path::PathBuf::from("/nonexistent/path"),
+            main: false,
+            package_manager: PackageManager::Generic {
+                file: String::from("tauri.conf.json"),
+                format: GenericFormat::Json,
+                version_field: String::from("version"),
+            },
+            hooks: Default::default(),
+        };
+        let err = PanProjectConfig::<NativeSystem>::validate_module_pub("my-tauri", &conf)
+            .unwrap_err();
+        let msg = err.to_string();
+        assert!(msg.contains("my-tauri"), "error should mention module name: {msg}");
+        assert!(msg.contains("tauri.conf.json"), "error should mention the file: {msg}");
+    }
+
+    #[test]
+    fn deserialize_generic_module() {
+        let toml_str = r#"
+[modules.tauri]
+path = "src-tauri"
+packageManager = "Generic"
+file = "tauri.conf.json"
+format = "json"
+versionField = "version"
+"#;
+        let parsed: Result<PanProjectConfig<NativeSystem>, _> = toml::from_str(toml_str);
+        assert!(parsed.is_ok(), "Should deserialize Generic config: {:?}", parsed.err());
     }
 
     #[test]

@@ -1,4 +1,5 @@
 pub mod json;
+pub mod tomlcodec;
 pub mod xml;
 
 pub trait FormatCodec {

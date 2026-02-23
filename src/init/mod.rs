@@ -239,7 +239,7 @@ fn render_toml(config: &InitConfig) -> String {
         out.push_str(&format!("path = \"{}\"\n", module.rel_path));
         out.push_str(&format!(
             "packageManager = \"{}\"\n",
-            package_manager_name(module.package_manager)
+            package_manager_name(&module.package_manager)
         ));
         // Mark first module as main when there are multiple
         if i == 0 && has_multiple {
@@ -250,12 +250,13 @@ fn render_toml(config: &InitConfig) -> String {
     out
 }
 
-fn package_manager_name(pm: PackageManager) -> &'static str {
+fn package_manager_name(pm: &PackageManager) -> &'static str {
     match pm {
         PackageManager::Cargo => "Cargo",
         PackageManager::Npm => "Npm",
         PackageManager::Maven => "Maven",
         PackageManager::Gradle => "Gradle",
+        PackageManager::Generic { .. } => "Generic",
     }
 }
 

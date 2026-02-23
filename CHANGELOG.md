@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- Generic package manager: support for custom version files via `packageManager = "Generic"` with configurable `file`, `format` (json/xml/toml), and `versionField` (dot notation)
+- TOML format-preserving codec (`TomlString`) for Generic package manager
+
+### Fixed
+- JSON parser now handles empty strings (`""`) correctly instead of failing with a parse error
+- JSON parser now supports all standard escape sequences (`\/`, `\t`, `\r`, `\b`, `\f`, `\u`) instead of only `\"`, `\n`, `\\`
 
 ## [0.17.0] 2026-02-22
 ### Added
