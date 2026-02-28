@@ -24,6 +24,7 @@
 
 - [Installation](#installation)
 - [Quick Start](#quick-start)
+- [Initialization](#initialization)
 - [Configuration](#configuration)
 - [Usage](#usage)
 - [Package Manager Support](#package-manager-support)
@@ -69,32 +70,28 @@ The binary will be available at `target/release/panrelease`.
 
 ## Quick Start
 
-1. **Initialize your project** by creating a `.panproject.toml` file in your project root:
+1. **Initialize your project** by running `panrelease init` in your repository root:
 
-```toml
-[vcs]
-software = "Git"
-
-[modules.main]
-path = "."
-packageManager = "Cargo"  # or "Npm", "Maven", "Gradle"
-main = true
+```bash
+panrelease init
 ```
+
+This auto-detects the package manager (Cargo, npm, Maven, Gradle) and writes a `.panproject.toml`. Pass `--interactive` to be prompted for optional settings (tag template, GPG signing, strict mode, changelog).
 
 2. **Create a release** with a version bump:
 
 ```bash
 # Patch release (1.0.0 -> 1.0.1)
-panrelease patch
+panrelease release patch
 
 # Minor release (1.0.0 -> 1.1.0)
-panrelease minor
+panrelease release minor
 
 # Major release (1.0.0 -> 2.0.0)
-panrelease major
+panrelease release major
 
 # Set explicit version
-panrelease 2.0.0
+panrelease release 2.0.0
 ```
 
 That's it! Panrelease will:
@@ -102,6 +99,36 @@ That's it! Panrelease will:
 - Update CHANGELOG.md with the new version and date
 - Commit the changes
 - Create a Git tag
+
+## Initialization
+
+```bash
+panrelease init [--interactive]
+```
+
+`panrelease init` auto-detects the package manager in the current repository (looking for `Cargo.toml`, `package.json`, `pom.xml`, or `gradle.properties`) and writes a minimal `.panproject.toml`. It fails if the file already exists.
+
+### Non-interactive mode (default)
+
+Writes a minimal config with Git defaults and the detected package manager. Suitable for CI bootstrap or simple projects.
+
+### Interactive mode
+
+```bash
+panrelease init --interactive
+```
+
+Prompts for each optional setting before writing the file:
+
+| Prompt | Default |
+|--------|---------|
+| Tag template | `{{version}}` |
+| Force GPG sign? | no |
+| Strict mode mainline branch (blank to disable) | *(disabled)* |
+| Generate changelog from commits? | no |
+| Commit format (if enabled) | `auto` |
+| Include scope in entries (if enabled) | yes |
+| Include unmatched commits (if enabled) | no |
 
 ## Configuration
 
@@ -143,22 +170,30 @@ For detailed configuration options, see [docs/CONFIGURATION.md](docs/CONFIGURATI
 
 ### Command Line Interface
 
-```bash
-panrelease [OPTIONS] <BUMP_TYPE>
+```
+panrelease [--path <PATH>] <SUBCOMMAND>
+
+Subcommands:
+  init [--interactive]          Initialize .panproject.toml
+  release <LEVEL|VERSION>       Bump and release a new version
+  show                          Print the current project version
 ```
 
-### Bump Types
+### Release Levels
 
-| Type | Description | Example |
-|------|-------------|---------|
+| Level | Description | Example |
+|-------|-------------|---------|
 | `major` | Increment major version | `1.2.3` -> `2.0.0` |
 | `minor` | Increment minor version | `1.2.3` -> `1.3.0` |
 | `patch` | Increment patch version | `1.2.3` -> `1.2.4` |
-| `post` | Create post-release with build metadata | `1.2.3` -> `1.2.3+feat.r1` |
-| `show` | Show current project version | `panrelease show` |
+| `post` | Create post-release with build metadata | `1.2.3` -> `1.2.3+dev.r1` |
 | `X.Y.Z` | Set explicit version | `1.2.3` -> `2.0.0` |
 
-> **Note — Non-standard semver usage:** The `post` bump type uses the **build metadata** field (`+`) to represent in-progress feature or hotfix releases (e.g., `1.2.3+feat.r1`). This is deliberately non-standard: the [semver specification §10](https://semver.org/#spec-item-10) states that build metadata **must be ignored** when determining version precedence, meaning `1.2.3+feat.r1` and `1.2.3+feat.r2` are considered equal to `1.2.3` by any spec-compliant tool.
+> **Note — Non-standard semver usage:** The `post` bump type uses the **build metadata** field (`+`) to represent in-progress feature or hotfix releases (e.g., `1.2.3+user-reg.r1`). This is deliberately non-standard: the [semver specification §10](https://semver.org/#spec-item-10) states that build metadata **must be ignored** when determining version precedence, meaning `1.2.3+feat.r1` and `1.2.3+feat.r2` are considered equal to `1.2.3` by any spec-compliant tool.
+>
+> **Slug behaviour:**
+> - **Without strict mode** — the slug is derived from the existing build metadata if present, otherwise defaults to `dev` (e.g., `1.2.3` → `1.2.3+dev.r1`, then `1.2.3+dev.r2`, ...)
+> - **With strict mode** — the slug is automatically inferred from the branch name (e.g., on `feat/user-reg` → `1.2.3+user-reg.r1`). See [Strict Mode](#strict-mode) for details.
 >
 > **Practical implications by ecosystem:**
 > - **crates.io** — rejects versions with build metadata at publish time
@@ -173,12 +208,13 @@ panrelease [OPTIONS] <BUMP_TYPE>
 >
 > Post-releases are intended for **internal development and staging workflows** and should not be published to public package registries. Use the standard `major` / `minor` / `patch` bumps for official releases.
 
-### Options
+### Global Options
 
-```
--h, --help       Print help information
--V, --version    Print version information
-```
+| Flag | Description |
+|------|-------------|
+| `-p`, `--path <PATH>` | Path to project root (default: current directory) |
+| `-h`, `--help` | Print help information |
+| `-V`, `--version` | Print version information |
 
 ### Environment Variables
 
@@ -190,19 +226,22 @@ panrelease [OPTIONS] <BUMP_TYPE>
 
 ```bash
 # Standard patch release
-panrelease patch
+panrelease release patch
 
 # Minor release with debug logging
-RUST_LOG=debug panrelease minor
+RUST_LOG=debug panrelease release minor
 
 # Set specific version
-panrelease 1.5.0
+panrelease release 1.5.0
 
-# Post-release for feature branch
-panrelease post
+# Post-release (defaults to 'dev' slug when strict mode is off)
+panrelease release post
 
 # Show current version
 panrelease show
+
+# Run from a different directory
+panrelease --path /path/to/project release patch
 ```
 
 ## Package Manager Support
@@ -228,6 +267,8 @@ path = "."
 packageManager = "Npm"
 main = true
 ```
+
+> For Node.js-specific usage (installing via npm/yarn/pnpm, using panrelease in `package.json` scripts, WebAssembly distribution), see the [Node.js package README](nodejs/README.md).
 
 ### Maven (Java)
 

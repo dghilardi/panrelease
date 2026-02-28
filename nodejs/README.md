@@ -35,9 +35,17 @@ pnpm add --save-dev panrelease
 
 ## Quick Start
 
-### 1. Configure Panrelease
+### 1. Initialize Panrelease
 
-Create a `.panproject.toml` file in your project root:
+Run `panrelease init` in your repository root to auto-detect the package manager and generate `.panproject.toml`:
+
+```bash
+npx panrelease init
+# or interactively:
+npx panrelease init --interactive
+```
+
+Alternatively, create `.panproject.toml` manually:
 
 ```toml
 [vcs]
@@ -63,26 +71,38 @@ main = true
 
 ```bash
 # Release a new patch version (e.g., 1.0.0 -> 1.0.1)
-npm run release -- patch
+npm run release -- release patch
 
 # Or run directly via npx
-npx panrelease minor
+npx panrelease release minor
 ```
 
 ## Commands
 
-| Command | Description | Example |
-|---------|-------------|---------|
+```
+panrelease [--path <PATH>] <SUBCOMMAND>
+
+Subcommands:
+  init [--interactive]          Initialize .panproject.toml
+  release <LEVEL|VERSION>       Bump and release a new version
+  show                          Print the current project version
+```
+
+### Release Levels
+
+| Level | Description | Example |
+|-------|-------------|---------|
 | `patch` | Increment patch version | `1.0.0` -> `1.0.1` |
 | `minor` | Increment minor version | `1.0.0` -> `1.1.0` |
 | `major` | Increment major version | `1.0.0` -> `2.0.0` |
-| `post`  | Create post-release (build metadata) | `1.0.0` -> `1.0.0+r1` |
-| `show`  | Show current project version | `panrelease show` |
-| `<version>` | Set explicit version | `panrelease 2.1.0` |
+| `post`  | Create post-release (build metadata) | `1.0.0` -> `1.0.0+dev.r1` |
+| `X.Y.Z` | Set explicit version | `1.0.0` -> `2.1.0` |
+
+> **Note:** The `post` bump type uses semver build metadata in a non-standard way. See the [main README](https://github.com/dghilardi/panrelease#readme) for a full explanation of the implications and intended use cases.
 
 ## Documentation
 
-For full configuration options, advanced features like **hooks**, and **strict mode**, please refer to the [Main Repository Documentation](https://github.com/dghilardi/panrelease#readme).
+For full configuration options, advanced features like **hooks**, **strict mode**, and **changelog from commits**, please refer to the [Main Repository Documentation](https://github.com/dghilardi/panrelease#readme).
 
 ## License
 
