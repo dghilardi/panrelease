@@ -158,6 +158,21 @@ panrelease [OPTIONS] <BUMP_TYPE>
 | `show` | Show current project version | `panrelease show` |
 | `X.Y.Z` | Set explicit version | `1.2.3` -> `2.0.0` |
 
+> **Note — Non-standard semver usage:** The `post` bump type uses the **build metadata** field (`+`) to represent in-progress feature or hotfix releases (e.g., `1.2.3+feat.r1`). This is deliberately non-standard: the [semver specification §10](https://semver.org/#spec-item-10) states that build metadata **must be ignored** when determining version precedence, meaning `1.2.3+feat.r1` and `1.2.3+feat.r2` are considered equal to `1.2.3` by any spec-compliant tool.
+>
+> **Practical implications by ecosystem:**
+> - **crates.io** — rejects versions with build metadata at publish time
+> - **npm** — silently strips build metadata (`1.2.3+feat.r1` → `1.2.3`), causing conflicts if the base version was already published
+> - **Maven / Gradle** — do not natively support semver build metadata; parsing behaviour is undefined
+> - **Version-sorting tools** — may treat all post-releases as identical to the base version
+>
+> **When this is useful:**
+> - **Parallel feature development** — multiple branches can each produce versioned builds (`1.3.4+login.r1`, `1.3.4+payments.r1`) without advancing the official version
+> - **Staging / QA traceability** — a deployed artefact carries its exact origin (feature name + iteration) in the version string, making it easy to identify what is running in a non-production environment
+> - **Hotfix iterations** — ship `1.3.4+fix-timeout.r1`, `r2`, `r3` to staging while the fix is being validated, then do a single official `1.3.5` patch once confirmed
+>
+> Post-releases are intended for **internal development and staging workflows** and should not be published to public package registries. Use the standard `major` / `minor` / `patch` bumps for official releases.
+
 ### Options
 
 ```
