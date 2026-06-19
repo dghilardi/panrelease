@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.19.0] 2026-06-19
+
 ### Added
 - `panrelease show --format docker-tag` to print the current version with Docker-compatible build metadata formatting (`+` -> `_`)
 
