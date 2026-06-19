@@ -85,7 +85,7 @@ panrelease [--path <PATH>] <SUBCOMMAND>
 Subcommands:
   init [--interactive]          Initialize .panproject.toml
   release <LEVEL|VERSION>       Bump and release a new version
-  show                          Print the current project version
+  show [--format <FORMAT>]      Print the current project version
 ```
 
 ### Release Levels

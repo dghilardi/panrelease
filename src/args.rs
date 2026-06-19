@@ -22,7 +22,7 @@ pub enum Commands {
     /// Release a new version
     Release(RelArgs),
     /// Show current version
-    Show,
+    Show(ShowArgs),
 }
 
 #[derive(Args, Debug)]
@@ -37,6 +37,36 @@ pub struct RelArgs {
     /// Either bump by LEVEL or set the VERSION for all selected packages
     #[arg(value_name = "LEVEL|VERSION", help_heading = "Version")]
     pub level_or_version: TargetVersion,
+}
+
+#[derive(Args, Debug)]
+pub struct ShowArgs {
+    /// Output format for the current version
+    #[arg(long, value_enum, default_value_t = ShowFormat::Semver)]
+    pub format: ShowFormat,
+}
+
+impl ShowArgs {
+    pub fn render_version(&self, version: &semver::Version) -> String {
+        self.format.render_version(version)
+    }
+}
+
+#[derive(ValueEnum, Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[value(rename_all = "kebab-case")]
+pub enum ShowFormat {
+    #[default]
+    Semver,
+    DockerTag,
+}
+
+impl ShowFormat {
+    pub fn render_version(&self, version: &semver::Version) -> String {
+        match self {
+            ShowFormat::Semver => version.to_string(),
+            ShowFormat::DockerTag => version.to_string().replace('+', "_"),
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -220,7 +250,9 @@ pub fn parse_build(build_info: &str) -> Option<(&str, Option<u64>)> {
 
 #[cfg(test)]
 mod test {
-    use crate::args::{BumpLevel, parse_build};
+    use clap::Parser;
+
+    use crate::args::{BumpLevel, Commands, PanReleaseArgs, ShowArgs, ShowFormat, parse_build};
 
     #[test]
     fn parse_simple_post_release() {
@@ -339,5 +371,31 @@ mod test {
         assert!(result.is_err());
         let msg = result.unwrap_err().to_string();
         assert!(msg.contains("feature/my-branch"), "error should mention the invalid slug: {msg}");
+    }
+
+    #[test]
+    fn show_semver_format_preserves_version() {
+        let args = ShowArgs { format: ShowFormat::Semver };
+        let version = semver::Version::parse("1.2.3+feat.r1").unwrap();
+
+        assert_eq!("1.2.3+feat.r1", args.render_version(&version));
+    }
+
+    #[test]
+    fn show_docker_tag_format_replaces_build_separator() {
+        let args = ShowArgs { format: ShowFormat::DockerTag };
+        let version = semver::Version::parse("1.2.3+feat.r1").unwrap();
+
+        assert_eq!("1.2.3_feat.r1", args.render_version(&version));
+    }
+
+    #[test]
+    fn parse_show_docker_tag_format() {
+        let parsed = PanReleaseArgs::try_parse_from(["panrelease", "show", "--format", "docker-tag"]).unwrap();
+
+        match parsed.subcommand {
+            Commands::Show(show_args) => assert_eq!(ShowFormat::DockerTag, show_args.format),
+            _ => panic!("expected show subcommand"),
+        }
     }
 }

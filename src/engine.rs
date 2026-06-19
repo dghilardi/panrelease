@@ -26,11 +26,11 @@ pub fn run<I, T, S>(args: I) -> anyhow::Result<()>
                 .context("Error parsing configuration file")?;
             project.release(rel_args).context("Error releasing project")?;
         }
-        Commands::Show => {
+        Commands::Show(show_args) => {
             let project = ConfigLoader::parse_config::<S>(opts.path)
                 .context("Error parsing configuration file")?;
             let version = project.current_version()?;
-            println!("{version}");
+            println!("{}", show_args.render_version(&version));
         }
     }
     Ok(())

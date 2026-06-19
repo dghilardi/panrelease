@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `panrelease show --format docker-tag` to print the current version with Docker-compatible build metadata formatting (`+` -> `_`)
+
 ## [0.18.0] 2026-02-23
 ### Added
 - Generic package manager: support for custom version files via `packageManager = "Generic"` with configurable `file`, `format` (json/xml/toml), and `versionField` (dot notation)

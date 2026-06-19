@@ -176,7 +176,7 @@ panrelease [--path <PATH>] <SUBCOMMAND>
 Subcommands:
   init [--interactive]          Initialize .panproject.toml
   release <LEVEL|VERSION>       Bump and release a new version
-  show                          Print the current project version
+  show [--format <FORMAT>]      Print the current project version
 ```
 
 ### Release Levels
@@ -239,6 +239,9 @@ panrelease release post
 
 # Show current version
 panrelease show
+
+# Show current version as a Docker-compatible tag
+panrelease show --format docker-tag
 
 # Run from a different directory
 panrelease --path /path/to/project release patch
