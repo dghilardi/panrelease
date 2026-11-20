@@ -1,9 +1,22 @@
+use std::collections::HashSet;
 use std::path::Path;
 use anyhow::anyhow;
 use git2::{BlameOptions, DescribeFormatOptions, DescribeOptions, Repository, RepositoryOpenFlags, Sort, StatusOptions};
 use crate::changelog::{BlameLine, CommitInfo};
 use crate::project::config::GitConfig;
 use crate::system::FileSystem;
+
+fn tree_entry<'a>(tree: &'a git2::Tree<'_>, path: &str) -> anyhow::Result<Option<git2::TreeEntry<'a>>> {
+    match tree.get_path(Path::new(path)) {
+        Ok(entry) => Ok(Some(entry)),
+        Err(error) if error.code() == git2::ErrorCode::NotFound => Ok(None),
+        Err(error) => Err(error.into()),
+    }
+}
+
+fn regular_blob(entry: &git2::TreeEntry<'_>) -> bool {
+    matches!(entry.filemode(), 0o100644 | 0o100755)
+}
 
 pub struct GitRepo {
     config: GitConfig,
@@ -132,6 +145,88 @@ impl GitRepo {
         }
 
         Ok(result)
+    }
+
+    pub(crate) fn head_revision(&self) -> anyhow::Result<String> {
+        Ok(self.repo.head()?.peel_to_commit()?.id().to_string())
+    }
+
+    pub(crate) fn is_shallow(&self) -> anyhow::Result<bool> {
+        Ok(self.repo.is_shallow())
+    }
+
+    pub(crate) fn stable_release_base(&self, revision: &str) -> anyhow::Result<Option<String>> {
+        let mut tagged_commits = HashSet::new();
+        for tag in self.repo.tag_names(None)?.iter().flatten() {
+            // The libgit backend writes bare version tags.
+            if super::stable_release_tag(tag, "{{version}}") || super::stable_release_tag(tag, &self.config.tag_template) {
+                let object = self.repo.revparse_single(&format!("refs/tags/{tag}"))?;
+                if let Ok(commit) = object.peel_to_commit() {
+                    tagged_commits.insert(commit.id());
+                }
+            }
+        }
+        let mut revisions = self.first_parent_walk(revision)?;
+        for oid in &mut revisions {
+            let oid = oid?;
+            if tagged_commits.contains(&oid) {
+                return Ok(Some(oid.to_string()));
+            }
+        }
+        Ok(None)
+    }
+
+    fn first_parent_walk(&self, revision: &str) -> anyhow::Result<git2::Revwalk<'_>> {
+        let mut revisions = self.repo.revwalk()?;
+        revisions.simplify_first_parent()?;
+        revisions.push(git2::Oid::from_str(revision)?)?;
+        Ok(revisions)
+    }
+
+    pub(crate) fn tracked_blobs(&self, revision: &str, path: &str) -> anyhow::Result<Vec<(String, String)>> {
+        let tree = self.repo.find_commit(git2::Oid::from_str(revision)?)?.tree()?;
+        let Some(entry) = tree_entry(&tree, path)? else {
+            return Ok(Vec::new());
+        };
+        if regular_blob(&entry) {
+            return Ok(vec![(path.to_owned(), entry.id().to_string())]);
+        }
+        if entry.kind() != Some(git2::ObjectType::Tree) {
+            return Ok(Vec::new());
+        }
+        let mut blobs = Vec::new();
+        let directory = self.repo.find_tree(entry.id())?;
+        directory.walk(git2::TreeWalkMode::PreOrder, |prefix, entry| {
+            if let Some(name) = entry.name().filter(|_| regular_blob(entry)) {
+                blobs.push((format!("{path}/{prefix}{name}"), entry.id().to_string()));
+            }
+            git2::TreeWalkResult::Ok
+        })?;
+        Ok(blobs)
+    }
+
+    pub(crate) fn read_blob(&self, oid: &str) -> anyhow::Result<String> {
+        let blob = self.repo.find_blob(git2::Oid::from_str(oid)?)?;
+        Ok(std::str::from_utf8(blob.content())?.to_owned())
+    }
+
+    pub(crate) fn path_revisions(&self, revision: &str, base: Option<&str>, path: &str) -> anyhow::Result<Vec<String>> {
+        let mut changed = Vec::new();
+        let mut last_blob = None;
+        for oid in self.first_parent_walk(revision)? {
+            let oid = oid?;
+            let revision = oid.to_string();
+            if base == Some(revision.as_str()) {
+                break;
+            }
+            let tree = self.repo.find_commit(oid)?.tree()?;
+            let blob = tree_entry(&tree, path)?.filter(regular_blob).map(|entry| entry.id());
+            if last_blob != Some(blob) {
+                changed.push(revision);
+                last_blob = Some(blob);
+            }
+        }
+        Ok(changed)
     }
 
     pub fn update_and_commit(&self, version: semver::Version) -> anyhow::Result<()> {
