@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Optionally record the first stable release in implemented design documents using Git history.
+
+### Fixed
+- Preserve Git command argument boundaries when reading repository data from Node.js.
+
 ## [0.19.0] 2026-06-19
 
 ### Added

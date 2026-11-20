@@ -48,6 +48,9 @@ extern "C" {
 extern "C" {
     #[wasm_bindgen(js_name = execSync, catch)]
     pub fn exec(command: String, opts: JsValue) -> Result<Vec<u8>, JsValue>;
+
+    #[wasm_bindgen(js_name = execFileSync, catch)]
+    pub fn exec_file(program: &str, args: js_sys::Array, opts: JsValue) -> Result<Vec<u8>, JsValue>;
 }
 
 pub mod process {

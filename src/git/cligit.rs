@@ -167,6 +167,61 @@ impl GitRepo {
         Ok(result)
     }
 
+    fn read_git(&self, args: &[&str]) -> anyhow::Result<String> {
+        let args = args.iter().map(|arg| arg.to_string()).collect::<Vec<_>>();
+        Ok(String::from_utf8(CmdRunner::build("git", &args, &self.path)?.output()?)?)
+    }
+
+    pub(crate) fn head_revision(&self) -> anyhow::Result<String> {
+        Ok(self.read_git(&["rev-parse", "HEAD"])?.trim().to_owned())
+    }
+
+    pub(crate) fn is_shallow(&self) -> anyhow::Result<bool> {
+        Ok(self.read_git(&["rev-parse", "--is-shallow-repository"])?.trim() == "true")
+    }
+
+    pub(crate) fn stable_release_base(&self, revision: &str) -> anyhow::Result<Option<String>> {
+        let history = self.read_git(&[
+            "log", "--first-parent", "--simplify-by-decoration", "--no-show-signature",
+            "--format=%H%x09%D", "--decorate=full",
+            "--decorate-refs=refs/tags", revision,
+        ])?;
+        Ok(history.lines().find_map(|line| {
+            let (commit, decorations) = line.split_once('\t')?;
+            decorations.split(", ")
+                .filter_map(|name| name.strip_prefix("tag: refs/tags/"))
+                .any(|tag| super::stable_release_tag(tag, &self.config.tag_template))
+                .then(|| commit.to_owned())
+        }))
+    }
+
+    pub(crate) fn tracked_blobs(&self, revision: &str, path: &str) -> anyhow::Result<Vec<(String, String)>> {
+        let args = ["--literal-pathspecs", "ls-tree", "-rz", "--full-tree", revision, "--", path]
+            .map(String::from);
+        let entries = CmdRunner::build("git", &args, &self.path)?.output()?;
+        Ok(entries.split(|&byte| byte == 0).filter_map(|entry| {
+            let (header, path) = std::str::from_utf8(entry).ok()?.split_once('\t')?;
+            let (mode, oid) = header.split_once(" blob ")?;
+            matches!(mode, "100644" | "100755").then(|| (path.to_owned(), oid.to_owned()))
+        }).collect())
+    }
+
+    pub(crate) fn read_blob(&self, oid: &str) -> anyhow::Result<String> {
+        self.read_git(&["cat-file", "blob", oid])
+    }
+
+    pub(crate) fn path_revisions(&self, revision: &str, base: Option<&str>, path: &str) -> anyhow::Result<Vec<String>> {
+        if base == Some(revision) {
+            return Ok(Vec::new());
+        }
+        let range = base.map_or_else(|| revision.to_owned(), |base| format!("{base}..{revision}"));
+        let history = self.read_git(&[
+            "--literal-pathspecs", "log", "--first-parent", "--no-show-signature", "--no-follow",
+            "--format=%H", &range, "--", path,
+        ])?;
+        Ok(history.lines().map(str::to_owned).collect())
+    }
+
     pub fn update_and_commit(&self, version: semver::Version) -> anyhow::Result<()> {
         CmdRunner::build(
             "git",

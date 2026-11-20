@@ -9,6 +9,7 @@ Panrelease is configured through a `.panproject.toml` file placed at the root of
 - [Full Configuration Reference](#full-configuration-reference)
 - [VCS Configuration](#vcs-configuration)
 - [Module Configuration](#module-configuration)
+- [Design Documents](#design-documents)
 - [Hooks](#hooks)
 - [Package Manager Details](#package-manager-details)
 - [Examples](#examples)
@@ -156,6 +157,38 @@ main = true
 - If only one module is defined, it is automatically treated as the main module
 - If multiple modules exist, exactly one must have `main = true`
 - Having zero or multiple main modules in a multi-module project will cause an error
+
+## Design Documents
+
+Add a `[design_docs]` section to record the first stable release of an implementation
+in its design document. Set `service` to the exact value used in the documents.
+`path` and `format` are optional and default to the values below.
+
+```toml
+[design_docs]
+service = "my-service"
+path = "docs/design"
+format = "cloud-design-v1"
+```
+
+The `cloud-design-v1` format uses YAML front matter in tracked `.md` and `.mdx`
+files under the specified directory. An eligible design has `status: accepted`,
+`delivery.implementation: implemented`, matching `delivery.service`,
+a `delivery.tracking` identifier, and an explicit YAML null in `delivery.released_in`.
+
+In the PR that completes an implementation, update `delivery.implementation`
+from `not_started` or `in_progress` to `implemented`. Panrelease looks for
+that transition for the same service and tracking identifier in the released
+revision's first-parent history, after the previous stable version tag. Keep the
+document at the same path across the transition so its history can be verified.
+When reverting the implementation, restore the design's implementation status
+in the same PR.
+
+Panrelease writes only `delivery.released_in` in the tagged release commit.
+Prereleases and versions with build metadata skip this step. If history cannot
+establish the transition, Panrelease reports the skipped document. Use a full
+Git checkout with release tags in CI. On adoption, fill in any previously
+released designs once with their verified first release version.
 
 ## Hooks
 
