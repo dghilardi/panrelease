@@ -6,6 +6,7 @@ use anyhow::{anyhow, Context};
 use serde::Deserialize;
 
 use crate::project::module::PanModule;
+use crate::project::design_docs::DesignDocsConfig;
 use crate::system::FileSystem;
 
 #[derive(Deserialize, Debug)]
@@ -14,6 +15,7 @@ pub struct PanProjectConfig<F> {
     vcs: VcsConfig,
     #[serde(default)]
     changelog: ChangelogConfig,
+    design_docs: Option<DesignDocsConfig>,
     modules: HashMap<String, ProjectModule>,
     #[serde(skip_deserializing, skip_serializing)]
     filesystem: PhantomData<F>,
@@ -147,6 +149,7 @@ impl<P> Default for PanProjectConfig<P> {
         Self {
             vcs: default_vcs_config(),
             changelog: ChangelogConfig::default(),
+            design_docs: None,
             modules: Default::default(),
             filesystem: PhantomData,
         }
@@ -181,6 +184,10 @@ impl<F: FileSystem + 'static> PanProjectConfig<F> {
 
     pub fn changelog(&self) -> &ChangelogConfig {
         &self.changelog
+    }
+
+    pub(super) fn design_docs(&self) -> Option<&DesignDocsConfig> {
+        self.design_docs.as_ref()
     }
 
     fn validate_module(mod_name: &str, module_conf: &ProjectModule) -> anyhow::Result<()> {

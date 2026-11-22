@@ -6,6 +6,7 @@ use crate::args::RelArgs;
 use crate::changelog;
 use crate::git::GitRepo;
 use crate::project::config::{PanProjectConfig, VcsConfig};
+use crate::project::design_docs;
 use crate::project::module::PanModule;
 use crate::project::strict;
 use crate::system::FileSystem;
@@ -225,12 +226,22 @@ impl <F: FileSystem + 'static> PanProject<F> {
         let new_version = rel_args.level_or_version
             .apply_with_slug(current_version, slug.as_deref())?;
 
+        let design_updates = match self.conf.design_docs() {
+            Some(config) if new_version.pre.is_empty() && new_version.build.is_empty() => {
+                Some(design_docs::plan::<F>(&self.repo, &self.path, config)?)
+            }
+            _ => None,
+        };
+
         for mut module in self.extract_modules()? {
             module.set_version(&new_version)?;
             module.persist()?;
             module.hook_after_rel()?;
         }
 
+        if let Some(updates) = design_updates {
+            updates.apply::<F>(&self.repo, &new_version)?;
+        }
         self.update_changelog(&new_version)?;
         self.repo.update_and_commit(new_version)?;
 

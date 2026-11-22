@@ -103,7 +103,8 @@ impl CmdRunner {
 
 #[cfg(target_arch = "wasm32")]
 pub struct CmdRunner {
-    command: String,
+    program: String,
+    args: Vec<String>,
     dir: PathBuf
 }
 
@@ -111,7 +112,8 @@ pub struct CmdRunner {
 impl CmdRunner {
     pub fn build(cmd_name: &str, args: &[String], dir: impl AsRef<Path>) -> Result<Self> {
         Ok(Self {
-            command: format!("{cmd_name} {}", args.join(" ")),
+            program: cmd_name.to_string(),
+            args: args.to_vec(),
             dir: dir.as_ref().to_path_buf(),
         })
     }
@@ -119,8 +121,9 @@ impl CmdRunner {
     pub fn run(&mut self) -> Result<()> {
         let opts = serde_wasm_bindgen::to_value(&json!({ "cwd": &self.dir }))
             .map_err(|e| anyhow!("Error serializing command options: {e:?}"))?;
-        let out = exec(self.command.clone(), opts)
-            .map_err(|e| anyhow!("Error executing command `{}`: {e:?}", self.command))
+        let command = format!("{} {}", self.program, self.args.join(" "));
+        let out = exec(command.clone(), opts)
+            .map_err(|e| anyhow!("Error executing command `{command}`: {e:?}"))
             .and_then(|res| Ok(String::from_utf8(res)?))?;
         crate::wasm_utils::log(&out);
         Ok(())
@@ -129,8 +132,9 @@ impl CmdRunner {
     pub fn output(&mut self) -> Result<Vec<u8>> {
         let opts = serde_wasm_bindgen::to_value(&json!({ "cwd": &self.dir }))
             .map_err(|e| anyhow!("Error serializing command options: {e:?}"))?;
-        let out = exec(self.command.clone(), opts)
-            .map_err(|e| anyhow!("Error executing command `{}`: {e:?}", self.command))?;
+        let args = self.args.iter().map(|arg| wasm_bindgen::JsValue::from_str(arg)).collect();
+        let out = crate::wasm_utils::exec_file(&self.program, args, opts)
+            .map_err(|e| anyhow!("Error executing command `{}`: {e:?}", self.program))?;
         Ok(out)
     }
 }
