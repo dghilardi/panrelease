@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Agent Skill describing how coding agents should release with panrelease.
 - Optionally record the first stable release in implemented design documents using Git history.
 
 ### Fixed

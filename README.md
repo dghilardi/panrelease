@@ -33,6 +33,7 @@
 - [Changelog from Commits](#changelog-from-commits)
 - [Strict Mode](#strict-mode)
 - [Git Integration](#git-integration)
+- [AI Coding Agents](#ai-coding-agents)
 - [Documentation](#documentation)
 - [Contributing](#contributing)
 - [License](#license)
@@ -553,6 +554,16 @@ tag_template = "v{{version}}"     # v1.0.0
 tag_template = "release-{{version}}"  # release-1.0.0
 # or
 tag_template = "{{version}}"      # 1.0.0 (default)
+```
+
+## AI Coding Agents
+
+Panrelease ships an [Agent Skill](skills/panrelease/SKILL.md) that teaches coding agents (Claude Code, Codex, Gemini CLI, Cursor, ...) how to release with panrelease: when to bump which level, how to prepare the changelog, strict mode rules, and to never push without confirmation.
+
+Install it with the [skills CLI](https://github.com/vercel-labs/skills), which detects the installed agents and asks whether to install for the current project or globally:
+
+```bash
+npx skills add dghilardi/panrelease
 ```
 
 ## Documentation
