@@ -42,6 +42,9 @@ extern "C" {
 
     #[wasm_bindgen(js_name = existsSync, catch)]
     pub fn exists(path: &str) -> Result<bool, JsValue>;
+
+    #[wasm_bindgen(js_name = mkdirSync, catch)]
+    pub fn mkdir(path: &str, opts: JsValue) -> Result<JsValue, JsValue>;
 }
 
 #[wasm_bindgen(module = "child_process")]
@@ -51,6 +54,16 @@ extern "C" {
 
     #[wasm_bindgen(js_name = execFileSync, catch)]
     pub fn exec_file(program: &str, args: js_sys::Array, opts: JsValue) -> Result<Vec<u8>, JsValue>;
+}
+
+pub mod os {
+
+    use wasm_bindgen::prelude::*;
+
+    #[wasm_bindgen(module = "os")]
+    extern "C" {
+        pub fn homedir() -> String;
+    }
 }
 
 pub mod process {

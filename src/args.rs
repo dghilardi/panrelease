@@ -23,6 +23,8 @@ pub enum Commands {
     Release(RelArgs),
     /// Show current version
     Show(ShowArgs),
+    /// Print or install the panrelease skill for AI coding agents
+    Skill(SkillArgs),
 }
 
 #[derive(Args, Debug)]
@@ -30,6 +32,27 @@ pub struct InitArgs {
     /// Interactively prompt for optional configuration (strict mode, changelog, etc.)
     #[arg(long)]
     pub interactive: bool,
+}
+
+#[derive(Args, Debug)]
+pub struct SkillArgs {
+    #[clap(subcommand)]
+    pub action: SkillAction,
+}
+
+#[derive(Subcommand, Debug)]
+pub enum SkillAction {
+    /// Print the bundled SKILL.md
+    Print,
+    /// Install the skill into .agents/skills and .claude/skills
+    Install(SkillInstallArgs),
+}
+
+#[derive(Args, Debug)]
+pub struct SkillInstallArgs {
+    /// Install in the home directory instead of the current Git repository
+    #[arg(long)]
+    pub global: bool,
 }
 
 #[derive(Args, Debug)]

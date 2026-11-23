@@ -178,6 +178,8 @@ Subcommands:
   init [--interactive]          Initialize .panproject.toml
   release <LEVEL|VERSION>       Bump and release a new version
   show [--format <FORMAT>]      Print the current project version
+  skill print                   Print the bundled agent skill
+  skill install [--global]      Install the agent skill for coding agents
 ```
 
 ### Release Levels
@@ -565,6 +567,16 @@ Install it with the [skills CLI](https://github.com/vercel-labs/skills), which d
 ```bash
 npx skills add dghilardi/panrelease
 ```
+
+Alternatively, panrelease can install the skill bundled with the installed version, so the instructions always match the binary:
+
+```bash
+panrelease skill install            # current Git repository (commit it to share with your team)
+panrelease skill install --global   # home directory, available in every project
+panrelease skill print              # print SKILL.md to stdout
+```
+
+`skill install` writes `SKILL.md` to `.agents/skills/panrelease/` (Codex, Gemini CLI, Cursor and other agents following the shared convention) and `.claude/skills/panrelease/` (Claude Code). Running it again updates outdated copies.
 
 ## Documentation
 

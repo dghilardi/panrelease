@@ -27,4 +27,17 @@ impl FileSystem for NativeSystem {
     fn is_a_file(path: &Path) -> bool {
         path.is_file()
     }
+
+    fn create_dir_all(path: &Path) -> anyhow::Result<()> {
+        std::fs::create_dir_all(path)?;
+        Ok(())
+    }
+
+    fn home_dir() -> anyhow::Result<PathBuf> {
+        std::env::var_os("HOME")
+            .or_else(|| std::env::var_os("USERPROFILE"))
+            .filter(|home| !home.is_empty())
+            .map(PathBuf::from)
+            .ok_or_else(|| anyhow::anyhow!("Could not determine the home directory: HOME is not set"))
+    }
 }

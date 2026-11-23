@@ -4,6 +4,7 @@ use clap::Parser;
 use crate::args::{Commands, PanReleaseArgs};
 use crate::conf::loader::ConfigLoader;
 use crate::init;
+use crate::skill;
 use crate::system::FileSystem;
 
 pub fn run<I, T, S>(args: I) -> anyhow::Result<()>
@@ -31,6 +32,9 @@ pub fn run<I, T, S>(args: I) -> anyhow::Result<()>
                 .context("Error parsing configuration file")?;
             let version = project.current_version()?;
             println!("{}", show_args.render_version(&version));
+        }
+        Commands::Skill(skill_args) => {
+            skill::run::<S>(opts.path, skill_args).context("Error handling agent skill")?;
         }
     }
     Ok(())
