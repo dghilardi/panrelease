@@ -53,6 +53,9 @@ pub struct SkillInstallArgs {
     /// Install in the home directory instead of the current Git repository
     #[arg(long)]
     pub global: bool,
+    /// Also add release instructions to AGENTS.md / CLAUDE.md in the repository root
+    #[arg(long, conflicts_with = "global")]
+    pub agents_md: bool,
 }
 
 #[derive(Args, Debug)]

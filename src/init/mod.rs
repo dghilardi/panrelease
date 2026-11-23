@@ -3,6 +3,7 @@ use anyhow::{anyhow, bail, Context};
 use crate::args::InitArgs;
 use crate::git::GitRepo;
 use crate::project::config::PackageManager;
+use crate::skill;
 use crate::system::FileSystem;
 
 // ── value structs ─────────────────────────────────────────────────────────────
@@ -39,6 +40,12 @@ impl Default for ChangelogOpts {
             include_unmatched: false,
         }
     }
+}
+
+#[derive(Default)]
+struct AgentOpts {
+    install_skill: bool,
+    agent_instructions: bool,
 }
 
 struct DetectedModule {
@@ -91,6 +98,12 @@ pub fn run<F: FileSystem + 'static>(path: Option<PathBuf>, args: InitArgs) -> an
         None
     };
 
+    let agent_opts = if args.interactive {
+        prompt_agents()?
+    } else {
+        AgentOpts::default()
+    };
+
     let config = InitConfig {
         vcs: vcs_opts,
         changelog: changelog_opts,
@@ -102,6 +115,13 @@ pub fn run<F: FileSystem + 'static>(path: Option<PathBuf>, args: InitArgs) -> an
         .with_context(|| format!("Failed to write {}", config_path.display()))?;
 
     println!("Created {}", config_path.display());
+
+    if agent_opts.install_skill {
+        skill::report(&skill::install_skill::<F>(&git_root)?);
+    }
+    if agent_opts.agent_instructions {
+        skill::report(&skill::add_agent_instructions::<F>(&git_root)?);
+    }
     Ok(())
 }
 
@@ -192,6 +212,12 @@ fn prompt_changelog() -> anyhow::Result<Option<ChangelogOpts>> {
         include_scope,
         include_unmatched,
     }))
+}
+
+fn prompt_agents() -> anyhow::Result<AgentOpts> {
+    let install_skill = prompt_bool("Install the panrelease skill for AI coding agents in this repository?", false)?;
+    let agent_instructions = prompt_bool("Add release instructions to AGENTS.md / CLAUDE.md?", false)?;
+    Ok(AgentOpts { install_skill, agent_instructions })
 }
 
 // ── TOML rendering ────────────────────────────────────────────────────────────

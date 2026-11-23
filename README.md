@@ -130,6 +130,8 @@ Prompts for each optional setting before writing the file:
 | Commit format (if enabled) | `auto` |
 | Include scope in entries (if enabled) | yes |
 | Include unmatched commits (if enabled) | no |
+| Install the panrelease skill for AI coding agents? | no |
+| Add release instructions to AGENTS.md / CLAUDE.md? | no |
 
 ## Configuration
 
@@ -179,7 +181,8 @@ Subcommands:
   release <LEVEL|VERSION>       Bump and release a new version
   show [--format <FORMAT>]      Print the current project version
   skill print                   Print the bundled agent skill
-  skill install [--global]      Install the agent skill for coding agents
+  skill install [--global|--agents-md]
+                                Install the agent skill for coding agents
 ```
 
 ### Release Levels
@@ -577,6 +580,14 @@ panrelease skill print              # print SKILL.md to stdout
 ```
 
 `skill install` writes `SKILL.md` to `.agents/skills/panrelease/` (Codex, Gemini CLI, Cursor and other agents following the shared convention) and `.claude/skills/panrelease/` (Claude Code). Running it again updates outdated copies.
+
+To also remind agents of the release rules in the repository instructions, add `--agents-md`:
+
+```bash
+panrelease skill install --agents-md
+```
+
+This inserts a short "Versioning" section between `<!-- panrelease:start -->` and `<!-- panrelease:end -->` markers in the existing `AGENTS.md` and `CLAUDE.md` files (creating `AGENTS.md` if neither exists). Running it again refreshes the section in place. `panrelease init --interactive` offers both steps as optional prompts.
 
 ## Documentation
 
