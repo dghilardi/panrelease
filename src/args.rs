@@ -23,7 +23,7 @@ pub enum Commands {
     Release(RelArgs),
     /// Show current version
     Show(ShowArgs),
-    /// Print or install the panrelease skill for AI coding agents
+    /// Print the panrelease skill for AI coding agents or add release instructions to AGENTS.md
     Skill(SkillArgs),
 }
 
@@ -44,18 +44,8 @@ pub struct SkillArgs {
 pub enum SkillAction {
     /// Print the bundled SKILL.md
     Print,
-    /// Install the skill into .agents/skills and .claude/skills
-    Install(SkillInstallArgs),
-}
-
-#[derive(Args, Debug)]
-pub struct SkillInstallArgs {
-    /// Install in the home directory instead of the current Git repository
-    #[arg(long)]
-    pub global: bool,
-    /// Also add release instructions to AGENTS.md / CLAUDE.md in the repository root
-    #[arg(long, conflicts_with = "global")]
-    pub agents_md: bool,
+    /// Add or refresh release instructions in AGENTS.md / CLAUDE.md at the repository root
+    AgentsMd,
 }
 
 #[derive(Args, Debug)]

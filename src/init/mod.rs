@@ -42,12 +42,6 @@ impl Default for ChangelogOpts {
     }
 }
 
-#[derive(Default)]
-struct AgentOpts {
-    install_skill: bool,
-    agent_instructions: bool,
-}
-
 struct DetectedModule {
     name: String,
     rel_path: String,
@@ -98,10 +92,10 @@ pub fn run<F: FileSystem + 'static>(path: Option<PathBuf>, args: InitArgs) -> an
         None
     };
 
-    let agent_opts = if args.interactive {
-        prompt_agents()?
+    let agent_instructions = if args.interactive {
+        prompt_bool("Add release instructions for AI coding agents to AGENTS.md / CLAUDE.md?", false)?
     } else {
-        AgentOpts::default()
+        false
     };
 
     let config = InitConfig {
@@ -116,11 +110,9 @@ pub fn run<F: FileSystem + 'static>(path: Option<PathBuf>, args: InitArgs) -> an
 
     println!("Created {}", config_path.display());
 
-    if agent_opts.install_skill {
-        skill::report(&skill::install_skill::<F>(&git_root)?);
-    }
-    if agent_opts.agent_instructions {
+    if agent_instructions {
         skill::report(&skill::add_agent_instructions::<F>(&git_root)?);
+        println!("Install the panrelease agent skill with: {}", skill::INSTALL_HINT);
     }
     Ok(())
 }
@@ -212,12 +204,6 @@ fn prompt_changelog() -> anyhow::Result<Option<ChangelogOpts>> {
         include_scope,
         include_unmatched,
     }))
-}
-
-fn prompt_agents() -> anyhow::Result<AgentOpts> {
-    let install_skill = prompt_bool("Install the panrelease skill for AI coding agents in this repository?", false)?;
-    let agent_instructions = prompt_bool("Add release instructions to AGENTS.md / CLAUDE.md?", false)?;
-    Ok(AgentOpts { install_skill, agent_instructions })
 }
 
 // ── TOML rendering ────────────────────────────────────────────────────────────

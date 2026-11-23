@@ -53,18 +53,4 @@ impl FileSystem for NodeJsSystem {
         let Some(path_str) = path.to_str() else { return false; };
         wasm_utils::exists(path_str).unwrap_or(false)
     }
-
-    fn create_dir_all(path: &Path) -> anyhow::Result<()> {
-        let path_str = path.to_str()
-            .ok_or_else(|| anyhow!("Path is not valid UTF-8: {:?}", path))?;
-        let opts = serde_wasm_bindgen::to_value(&serde_json::json!({ "recursive": true }))
-            .map_err(|e| anyhow!("Error serializing mkdir options: {e:?}"))?;
-        wasm_utils::mkdir(path_str, opts)
-            .map_err(|e| anyhow!("Error creating directory {:?}: {e:?}", path))?;
-        Ok(())
-    }
-
-    fn home_dir() -> anyhow::Result<PathBuf> {
-        Ok(PathBuf::from(wasm_utils::os::homedir()))
-    }
 }

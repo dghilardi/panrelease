@@ -12,7 +12,5 @@ pub trait FileSystem {
     fn current_dir() -> Result<PathBuf>;
     fn is_a_dir(path: &Path) -> bool;
     fn is_a_file(path: &Path) -> bool;
-    fn create_dir_all(path: &Path) -> Result<()>;
-    fn home_dir() -> Result<PathBuf>;
 }
 

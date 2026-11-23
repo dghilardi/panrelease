@@ -130,8 +130,7 @@ Prompts for each optional setting before writing the file:
 | Commit format (if enabled) | `auto` |
 | Include scope in entries (if enabled) | yes |
 | Include unmatched commits (if enabled) | no |
-| Install the panrelease skill for AI coding agents? | no |
-| Add release instructions to AGENTS.md / CLAUDE.md? | no |
+| Add release instructions for AI coding agents to AGENTS.md / CLAUDE.md? | no |
 
 ## Configuration
 
@@ -181,8 +180,7 @@ Subcommands:
   release <LEVEL|VERSION>       Bump and release a new version
   show [--format <FORMAT>]      Print the current project version
   skill print                   Print the bundled agent skill
-  skill install [--global|--agents-md]
-                                Install the agent skill for coding agents
+  skill agents-md               Add release instructions to AGENTS.md / CLAUDE.md
 ```
 
 ### Release Levels
@@ -571,23 +569,19 @@ Install it with the [skills CLI](https://github.com/vercel-labs/skills), which d
 npx skills add dghilardi/panrelease
 ```
 
-Alternatively, panrelease can install the skill bundled with the installed version, so the instructions always match the binary:
+The skill bundled with the installed panrelease version can also be printed, so agents without the skill installed can read the workflow on demand:
 
 ```bash
-panrelease skill install            # current Git repository (commit it to share with your team)
-panrelease skill install --global   # home directory, available in every project
-panrelease skill print              # print SKILL.md to stdout
+panrelease skill print
 ```
 
-`skill install` writes `SKILL.md` to `.agents/skills/panrelease/` (Codex, Gemini CLI, Cursor and other agents following the shared convention) and `.claude/skills/panrelease/` (Claude Code). Running it again updates outdated copies.
-
-To also remind agents of the release rules in the repository instructions, add `--agents-md`:
+To remind agents of the release rules in the repository instructions, run:
 
 ```bash
-panrelease skill install --agents-md
+panrelease skill agents-md
 ```
 
-This inserts a short "Versioning" section between `<!-- panrelease:start -->` and `<!-- panrelease:end -->` markers in the existing `AGENTS.md` and `CLAUDE.md` files (creating `AGENTS.md` if neither exists). Running it again refreshes the section in place. `panrelease init --interactive` offers both steps as optional prompts.
+This inserts a short "Versioning" section between `<!-- panrelease:start -->` and `<!-- panrelease:end -->` markers in the existing `AGENTS.md` and `CLAUDE.md` files at the repository root (creating `AGENTS.md` if neither exists). Running it again refreshes the section in place. `panrelease init --interactive` offers the same step as an optional prompt.
 
 ## Documentation
 
