@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.20.1] 2026-11-25
+
 ### Fixed
 - A relative `--path` now finds the Git repository root from the given directory instead of the current one.
 - `libgit` backend now applies `tag_template` to release tags.
