@@ -33,6 +33,7 @@
 - [Changelog from Commits](#changelog-from-commits)
 - [Strict Mode](#strict-mode)
 - [Git Integration](#git-integration)
+- [AI Coding Agents](#ai-coding-agents)
 - [Documentation](#documentation)
 - [Contributing](#contributing)
 - [License](#license)
@@ -129,6 +130,7 @@ Prompts for each optional setting before writing the file:
 | Commit format (if enabled) | `auto` |
 | Include scope in entries (if enabled) | yes |
 | Include unmatched commits (if enabled) | no |
+| Add release instructions for AI coding agents to AGENTS.md / CLAUDE.md? | no |
 
 ## Configuration
 
@@ -177,6 +179,8 @@ Subcommands:
   init [--interactive]          Initialize .panproject.toml
   release <LEVEL|VERSION>       Bump and release a new version
   show [--format <FORMAT>]      Print the current project version
+  skill print                   Print the bundled agent skill
+  skill agents-md               Add release instructions to AGENTS.md / CLAUDE.md
 ```
 
 ### Release Levels
@@ -554,6 +558,30 @@ tag_template = "release-{{version}}"  # release-1.0.0
 # or
 tag_template = "{{version}}"      # 1.0.0 (default)
 ```
+
+## AI Coding Agents
+
+Panrelease ships an [Agent Skill](skills/panrelease/SKILL.md) that teaches coding agents (Claude Code, Codex, Gemini CLI, Cursor, ...) how to release with panrelease: when to bump which level, how to prepare the changelog, strict mode rules, and to never push without confirmation.
+
+Install it with the [skills CLI](https://github.com/vercel-labs/skills), which detects the installed agents and asks whether to install for the current project or globally:
+
+```bash
+npx skills add dghilardi/panrelease
+```
+
+The skill bundled with the installed panrelease version can also be printed, so agents without the skill installed can read the workflow on demand:
+
+```bash
+panrelease skill print
+```
+
+To remind agents of the release rules in the repository instructions, run:
+
+```bash
+panrelease skill agents-md
+```
+
+This inserts a short "Versioning" section between `<!-- panrelease:start -->` and `<!-- panrelease:end -->` markers in the existing `AGENTS.md` and `CLAUDE.md` files at the repository root (creating `AGENTS.md` if neither exists). Running it again refreshes the section in place. `panrelease init --interactive` offers the same step as an optional prompt.
 
 ## Documentation
 

@@ -3,6 +3,7 @@ use anyhow::{anyhow, bail, Context};
 use crate::args::InitArgs;
 use crate::git::GitRepo;
 use crate::project::config::PackageManager;
+use crate::skill;
 use crate::system::FileSystem;
 
 // ── value structs ─────────────────────────────────────────────────────────────
@@ -91,6 +92,12 @@ pub fn run<F: FileSystem + 'static>(path: Option<PathBuf>, args: InitArgs) -> an
         None
     };
 
+    let agent_instructions = if args.interactive {
+        prompt_bool("Add release instructions for AI coding agents to AGENTS.md / CLAUDE.md?", false)?
+    } else {
+        false
+    };
+
     let config = InitConfig {
         vcs: vcs_opts,
         changelog: changelog_opts,
@@ -102,6 +109,11 @@ pub fn run<F: FileSystem + 'static>(path: Option<PathBuf>, args: InitArgs) -> an
         .with_context(|| format!("Failed to write {}", config_path.display()))?;
 
     println!("Created {}", config_path.display());
+
+    if agent_instructions {
+        skill::report(&skill::add_agent_instructions::<F>(&git_root)?);
+        println!("Install the panrelease agent skill with: {}", skill::INSTALL_HINT);
+    }
     Ok(())
 }
 

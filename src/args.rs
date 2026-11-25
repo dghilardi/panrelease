@@ -23,6 +23,8 @@ pub enum Commands {
     Release(RelArgs),
     /// Show current version
     Show(ShowArgs),
+    /// Print the panrelease skill for AI coding agents or add release instructions to AGENTS.md
+    Skill(SkillArgs),
 }
 
 #[derive(Args, Debug)]
@@ -30,6 +32,20 @@ pub struct InitArgs {
     /// Interactively prompt for optional configuration (strict mode, changelog, etc.)
     #[arg(long)]
     pub interactive: bool,
+}
+
+#[derive(Args, Debug)]
+pub struct SkillArgs {
+    #[clap(subcommand)]
+    pub action: SkillAction,
+}
+
+#[derive(Subcommand, Debug)]
+pub enum SkillAction {
+    /// Print the bundled SKILL.md
+    Print,
+    /// Add or refresh release instructions in AGENTS.md / CLAUDE.md at the repository root
+    AgentsMd,
 }
 
 #[derive(Args, Debug)]

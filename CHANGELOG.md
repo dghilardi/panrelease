@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `panrelease skill print` to print the bundled agent skill and `panrelease skill agents-md` to add release instructions to AGENTS.md / CLAUDE.md, also offered by `init --interactive`.
+- Agent Skill describing how coding agents should release with panrelease.
 - Optionally record the first stable release in implemented design documents using Git history.
 
 ### Fixed

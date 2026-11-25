@@ -11,6 +11,7 @@ mod git;
 mod changelog;
 pub mod conf;
 mod init;
+mod skill;
 
 use anyhow::Context;
 use wasm_bindgen::prelude::*;
