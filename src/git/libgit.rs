@@ -63,8 +63,7 @@ impl GitRepo {
     }
 
     pub fn latest_version_tag(&self, commit: &str) -> anyhow::Result<Option<String>> {
-        let oid = git2::Oid::from_str(commit)?;
-        let commit_obj = self.repo.find_object(oid, None)?;
+        let commit_obj = self.repo.revparse_single(commit)?;
 
         let mut describe_opts = DescribeOptions::new();
         describe_opts.describe_tags();
@@ -250,7 +249,8 @@ impl GitRepo {
         let commit_oid = self.repo.commit(Some("HEAD"), &signature, &signature, &descr, &tree, &[&parent_commit])?;
 
         let commit_obj = self.repo.find_object(commit_oid, None)?;
-        self.repo.tag_lightweight(&descr, &commit_obj, false)?;
+        let tag_descr = self.config.tag_template.replace("{{version}}", &descr);
+        self.repo.tag_lightweight(&tag_descr, &commit_obj, false)?;
 
         Ok(())
     }
