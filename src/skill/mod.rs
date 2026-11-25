@@ -39,11 +39,7 @@ pub fn run<F: FileSystem + 'static>(path: Option<PathBuf>, args: SkillArgs) -> a
     match args.action {
         SkillAction::Print => print!("{SKILL_MD}"),
         SkillAction::AgentsMd => {
-            let cwd = match path {
-                Some(path) if path.is_absolute() => path,
-                Some(path) => F::current_dir()?.join(path),
-                None => F::current_dir()?,
-            };
+            let cwd = path.map(Ok).unwrap_or_else(F::current_dir)?;
             let root = GitRepo::find_git_root::<F>(&cwd).context("Could not find git repository root")?;
             report(&add_agent_instructions::<F>(root)?);
         }

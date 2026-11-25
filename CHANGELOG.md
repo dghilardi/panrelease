@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- A relative `--path` now finds the Git repository root from the given directory instead of the current one.
 - `libgit` backend now applies `tag_template` to release tags.
 - `libgit` backend now finds the previous version tag from `HEAD`, so the changelog is populated from commits.
 - Build with the `libgit` feature against OpenSSL 4.
